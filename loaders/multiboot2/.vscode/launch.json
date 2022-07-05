@@ -1,0 +1,17 @@
+{
+    "configurations": [
+        {
+            "type": "gdb",
+            "request": "attach",
+            "name": "Debug",
+            "executable": "${workspaceFolder}/target/x86_64-yeetos/debug/loader",
+            "target": "localhost:9000",
+            "remote": true,
+            "cwd": "${workspaceRoot}",
+            "autorun": [
+                "set disassembly-flavor intel",
+            ]
+        }
+
+    ]
+}

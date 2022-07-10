@@ -6,6 +6,10 @@ ARCH=x86_64
 CONFIG=debug
 LOADER=multiboot2
 
+# qemu options
+MEMORY=2G
+
+
 TARGET=$(ARCH)-yeetos
 
 LOADER_DIR=$(TOP_DIR)/loaders/$(LOADER)
@@ -27,11 +31,11 @@ $(LOADER_BIN): FORCE
 
 $(INITRD): $(KERNEL_BIN)
 	@mkdir -p $(OUT_DIR)
-	@$(TOP_DIR)/scripts/mkinitrd.sh -o $(INITRD) $(KERNEL_BIN)
+	@$(TOP_DIR)/scripts/mkinitrd.sh -o $(INITRD) -k $(KERNEL_BIN)
 
 $(ISO): $(INITRD) $(LOADER_BIN)
 	@mkdir -p $(OUT_DIR)
-	@$(TOP_DIR)/scripts/mkiso.sh -o $(ISO) $(LOADER_BIN) $(INITRD)
+	@$(TOP_DIR)/scripts/mkiso.sh -o $(ISO) -l $(LOADER_BIN) -i $(INITRD)
 
 clean:
 	@ rm -f $(INITRD) $(ISO)
@@ -44,12 +48,15 @@ dump-kernel:
 	@objdump -x $(KERNEL_BIN)
 
 
-run: $(ISO)
-	@qemu-system-x86_64 --accel kvm -m 2G -cdrom $(ISO)
+qemu: $(ISO)
+	@qemu-system-x86_64 --accel kvm -m $(MEMORY) -cdrom $(ISO)
+
+qemu-no-kvm: $(ISO)
+	@qemu-system-x86_64 -m $(MEMORY) -cdrom $(ISO)
 
 
-debug: $(ISO)
-	@qemu-system-x86_64 -d cpu_reset -S -gdb tcp::9000 -m 2G -cdrom $(ISO)
+qemu-debug: $(ISO)
+	@qemu-system-x86_64 -d cpu_reset -S -gdb tcp::9000 -m $(MEMORY)  -cdrom $(ISO)
 
 .PHONY: run clean clean-all  dump-kernel
 

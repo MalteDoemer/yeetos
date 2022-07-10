@@ -1,29 +1,14 @@
 #!/bin/sh
 
 function help {
-    echo "usage $(basename $0) [-o OUTPUT_FILE] FILES..."
+    echo "usage $(basename $0) -o OUTPUT_FILE -k KERNEL_FILE "
+    exit 0
 }
 
-while getopts ":o:h" ARG; do
-    case "$ARG" in 
-        o) OUTPUT_FILE="$OPTARG" ;;
-        h) help ;;
-    esac
-done
-
-if [[ -z "${OUTPUT_FILE+x}" ]]; then 
-    OUTPUT_FILE="$(pwd)/initrd"
-fi
-
-shift $(expr $OPTIND - 1 )
-
-
-TEMP_DIR=$(mktemp -d)
-
-if [[ ! "$TEMP_DIR" || ! -d "$TEMP_DIR" ]]; then
-    echo "failed to create temp directory" 
-    exit 1 
-fi
+function error {
+    echo error: $@
+    exit 1
+}
 
 function cleanup {
     rm -rf "$TEMP_DIR"
@@ -31,6 +16,24 @@ function cleanup {
 
 trap cleanup EXIT
 
-cp $@ "$TEMP_DIR"
+while getopts ":o:k:h" ARG; do
+    case "$ARG" in 
+        o) OUTPUT_FILE="$OPTARG" ;;
+        k) KERNEL_FILE="$OPTARG" ;;
+        h) help ;;
+    esac
+done
+
+shift $(expr $OPTIND - 1 )
+
+[[ -z "${KERNEL_FILE+x}" ]] && error "kernel file must be provided"
+
+[[ -z "${OUTPUT_FILE+x}" ]] && error "output file must be provided" 
+
+TEMP_DIR=$(mktemp -d)
+
+[[ ! "$TEMP_DIR" || ! -d "$TEMP_DIR" ]] && error "failed to create temp directory" 
+
+cp "$KERNEL_FILE" "$TEMP_DIR/kernel"
 
 cd "$TEMP_DIR" && tar -cf "$OUTPUT_FILE" ./*

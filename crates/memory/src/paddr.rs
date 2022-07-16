@@ -14,6 +14,7 @@ impl fmt::Debug for TryFromVirtAddrError {
 type Inner = u64;
 
 #[repr(transparent)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct PhysAddr(Inner);
 
 impl PhysAddr {

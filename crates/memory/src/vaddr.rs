@@ -4,16 +4,16 @@ use super::paddr::PhysAddr;
 
 pub struct TryFromPhysAddrError;
 
-impl std::fmt::Debug for TryFromPhysAddrError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Debug for TryFromPhysAddrError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str("PhysAddr too big to fit into VirtAddr")
     }
 }
 
-#[cfg(target_arch = "x86_64")]
-type Inner = u64;
+type Inner = usize;
 
 #[repr(transparent)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct VirtAddr(Inner);
 
 impl VirtAddr {
@@ -29,11 +29,11 @@ impl VirtAddr {
         self.0
     }
 
-    pub unsafe fn as_ptr<T>(self) -> *const T {
+    pub fn as_ptr<T>(self) -> *const T {
         self.0 as *const T
     }
 
-    pub unsafe fn as_ptr_mut<T>(self) -> *mut T {
+    pub fn as_ptr_mut<T>(self) -> *mut T {
         self.0 as *mut T
     }
 

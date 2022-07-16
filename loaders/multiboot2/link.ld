@@ -25,10 +25,15 @@ SECTIONS
 
     .stack ALIGN (4K) (NOLOAD) : {
         __stack_start = .;
-        . += 4 * 4096; /* stack size needs to be page aligned! */
+        . += 4 * 4096;
         __stack_end = .;
     }
 
+    .heap ALIGN (4K) (NOLOAD) : {
+        __heap_start = .;
+        . += 4 * 4096;
+        __heap_end = .;
+    }
 
     __load_end = ALIGN(4K);
 

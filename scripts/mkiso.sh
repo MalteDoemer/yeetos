@@ -40,7 +40,7 @@ mkdir -p "$TEMP_DIR/yeetos"
 
 echo "set timeout=0
 menuentry \"yeetos\" {
-    multiboot2 /yeetos/loader
+    multiboot2 /yeetos/loader hello
     module2 /yeetos/initrd
     boot
 }" > "$TEMP_DIR/boot/grub/grub.cfg"

@@ -1,4 +1,5 @@
 use alloc::string::String;
+use log::info;
 use memory::VirtAddr;
 
 use self::{tag::Tag, tag_iterator::TagIterator};
@@ -27,7 +28,8 @@ impl Multiboot2Info {
         for tag in iter {
             match tag {
                 Tag::CommandLine(tag) => cmdline = Some(tag),
-                _ => {}
+                Tag::Unknown(tag_type) => info!("found unknown multiboot2 tag: {}\n", tag_type),
+                Tag::End => {}
             }
         }
 

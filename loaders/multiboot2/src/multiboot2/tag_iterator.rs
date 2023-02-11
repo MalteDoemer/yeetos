@@ -28,18 +28,27 @@ impl TagIterator {
         }
     }
 
-    fn next_tag(&mut self) -> TagInfo {
+    fn current_tag(&self) -> TagInfo {
         // Safety:
         // The contract in `new()` ensures that we can read
         // from the (valid) multiboot2 struct.
         unsafe {
             let addr = self.reader.addr();
 
-            let tag_type = self.reader.read::<u32>();
-            let tag_size = self.reader.read::<u32>();
+            let ptr = self.reader.as_ptr::<u32>();
+
+            let tag_type = *ptr;
+            let tag_size = *ptr.add(1);
 
             TagInfo::new(addr, tag_size as usize, tag_type)
         }
+    }
+
+    fn skip_to_next_tag(&mut self) {
+        let current_tag = self.current_tag();
+
+        self.reader.skip(current_tag.total_size()); // skip the over the tag
+        self.reader.align_up(8); // tags are 8-byte aligned
     }
 }
 
@@ -47,11 +56,13 @@ impl Iterator for TagIterator {
     type Item = Tag;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let info = self.next_tag();
+        let info = self.current_tag();
 
         // Safety:
         // Contract in new assures a valid multiboot2 structure.
         let tag = unsafe { Tag::parse(info) };
+
+        self.skip_to_next_tag();
 
         if let Tag::End = tag {
             None

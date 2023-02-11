@@ -1,4 +1,4 @@
-use alloc::string::String;
+use alloc::{string::String, vec::Vec};
 use log::info;
 use memory::VirtAddr;
 
@@ -8,8 +8,68 @@ mod tag;
 mod tag_info;
 mod tag_iterator;
 
+#[derive(Debug, Clone, Copy)]
+pub struct BasicMemoryInfo {
+    pub mem_lower: u32,
+    pub mem_upper: u32,
+}
+
+#[derive(Debug, Clone, Copy)]
+#[repr(packed)]
+pub struct RSDPDescriptorV1 {
+    pub signature: [u8; 8],
+    pub checksum: u8,
+    pub oemid: [u8; 6],
+    pub rsdt_physical_address: u32,
+}
+
+#[derive(Debug, Clone, Copy)]
+#[repr(packed)]
+pub struct RSDPDescriptorV2 {
+    pub v1: RSDPDescriptorV1,
+    pub length: u32,
+    pub xsdt_physical_address: u32,
+    pub extended_checksum: u32,
+    pub reserved: [u8; 3],
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum RSDPDescriptor {
+    V1(RSDPDescriptorV1),
+    V2(RSDPDescriptorV2),
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct BiosBootDevice {
+    pub bios_dev: u32,
+    pub partition: u32,
+    pub sub_partition: u32,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct MemoryRegion {
+    pub base_addr: u64,
+    pub length: u64,
+    pub region_type: u32,
+}
+
+#[derive(Debug)]
+pub struct ModuleDescriptor {
+    pub mod_start: u32,
+    pub mod_end: u32,
+    pub info: String,
+}
+
+#[derive(Debug)]
 pub struct Multiboot2Info {
-    cmdline: Option<String>,
+    pub cmdline: Option<String>,
+    pub loader_name: Option<String>,
+    pub basic_memory_info: Option<BasicMemoryInfo>,
+    pub bios_boot_device: Option<BiosBootDevice>,
+    pub modules: Vec<ModuleDescriptor>,
+    pub memory_regions: Vec<MemoryRegion>,
+    pub image_load_base_physical: Option<u32>,
+    pub rsdp_descriptor: Option<RSDPDescriptor>,
 }
 
 impl Multiboot2Info {
@@ -24,16 +84,40 @@ impl Multiboot2Info {
         let iter = unsafe { TagIterator::new(mboot_addr) };
 
         let mut cmdline = None;
+        let mut loader_name = None;
+        let mut basic_memory_info = None;
+        let mut bios_boot_device = None;
+        let mut modules = Vec::new();
+        let mut memory_regions = Vec::new();
+        let mut image_load_base_physical = None;
+        let mut rsdp_descriptor = None;
 
         for tag in iter {
             match tag {
-                Tag::CommandLine(tag) => cmdline = Some(tag),
-                Tag::Unknown(tag_type) => info!("found unknown multiboot2 tag: {}\n", tag_type),
+                Tag::CommandLine(value) => cmdline = Some(value),
+                Tag::BootLoaderName(value) => loader_name = Some(value),
+                Tag::BasicMemoryInfo(value) => basic_memory_info = Some(value),
+                Tag::BiosBootDevice(value) => bios_boot_device = Some(value),
+                Tag::ModuleDescriptor(value) => modules.push(value),
+                Tag::MemoryRegions(value) => memory_regions = value,
+                Tag::ImageLoadBasePhysical(value) => image_load_base_physical = Some(value),
+                Tag::OldRSDP(value) => rsdp_descriptor = Some(RSDPDescriptor::V1(value)),
+                Tag::NewRSDP(value) => rsdp_descriptor = Some(RSDPDescriptor::V2(value)),
+                Tag::Unknown(value) => info!("found unkown multiboot2 tag: {}\n", value),
                 Tag::End => {}
             }
         }
 
-        Multiboot2Info { cmdline }
+        Multiboot2Info {
+            cmdline,
+            loader_name,
+            basic_memory_info,
+            bios_boot_device,
+            modules,
+            memory_regions,
+            image_load_base_physical,
+            rsdp_descriptor,
+        }
     }
 
     pub(crate) fn command_line(&self) -> Option<&String> {

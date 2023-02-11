@@ -18,7 +18,7 @@ use core::{
     panic::PanicInfo,
 };
 
-use log::error;
+use log::{error, info};
 use memory::VirtAddr;
 use multiboot2::Multiboot2Info;
 
@@ -35,7 +35,9 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
 
     // Safety:
     // mboot_ptr is passed by boot.s and assumend to be correct.
-    let _mboot_info = unsafe { Multiboot2Info::new(VirtAddr::new(mboot_ptr)) };
+    let mboot_info = unsafe { Multiboot2Info::new(VirtAddr::new(mboot_ptr)) };
+
+    info!("{:?}\n", mboot_info);
 
     panic!("finished with main()");
 }

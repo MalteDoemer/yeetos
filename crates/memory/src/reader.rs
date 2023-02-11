@@ -49,6 +49,26 @@ impl MemoryReader {
         self.current += size
     }
 
+    /// Aligns the reader up to the next multiple of `alignment`.
+    ///
+    /// ### Panics
+    /// - Panics if `alignment` is zero
+    /// - Panics based on the `overflow-checks` setting (`true` for dev and `false` for release)
+    pub fn align_up(&mut self, alignment: usize) {
+        let aligned = self.current.next_multiple_of(alignment);
+
+        self.current = aligned;
+    }
+
+    /// Aligns the reader up to the next multiple of `alignment`.
+    ///
+    /// Returns `None` if alignment is zero or the operation would overflow.
+    pub fn align_up_checked(&mut self, alignment: usize) -> Option<()> {
+        let aligned = self.current.checked_next_multiple_of(alignment)?;
+        self.current = aligned;
+        Some(())
+    }
+
     /// Reads a `T` from the current address.
     ///
     /// ### Safety
@@ -75,7 +95,7 @@ impl MemoryReader {
         let res = *self.as_ptr_mut();
 
         self.skip(core::mem::size_of::<T>());
-        
+
         Some(res)
     }
 }

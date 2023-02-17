@@ -20,7 +20,7 @@ impl log::Log for BootLogger {
         let mut guard = BUFFER.lock();
         let ref mut writer = *guard;
         // ignore the result since we can't do anything
-        let _ = write!(writer, "[{}]: {}", record.level(), record.args());
+        let _ = write!(writer, "[{}]: {}\n", record.level(), record.args());
     }
 
     fn flush(&self) {}

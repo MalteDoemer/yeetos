@@ -14,17 +14,18 @@ pub struct BasicMemoryInfo {
     pub mem_upper: u32,
 }
 
+#[repr(align(4))]
 #[derive(Debug, Clone, Copy)]
-#[repr(packed)]
 pub struct RSDPDescriptorV1 {
     pub signature: [u8; 8],
     pub checksum: u8,
     pub oemid: [u8; 6],
+    pub revision: u8,
     pub rsdt_physical_address: u32,
 }
 
+#[repr(align(4))]
 #[derive(Debug, Clone, Copy)]
-#[repr(packed)]
 pub struct RSDPDescriptorV2 {
     pub v1: RSDPDescriptorV1,
     pub length: u32,
@@ -103,7 +104,7 @@ impl Multiboot2Info {
                 Tag::ImageLoadBasePhysical(value) => image_load_base_physical = Some(value),
                 Tag::OldRSDP(value) => rsdp_descriptor = Some(RSDPDescriptor::V1(value)),
                 Tag::NewRSDP(value) => rsdp_descriptor = Some(RSDPDescriptor::V2(value)),
-                Tag::Unknown(value) => info!("found unkown multiboot2 tag: {}\n", value),
+                Tag::Unknown(value) => info!("found unkown multiboot2 tag: {}", value),
                 Tag::End => {}
             }
         }

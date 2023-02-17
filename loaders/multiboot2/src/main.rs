@@ -6,12 +6,12 @@
 // enabled while still in early developement phase
 #![allow(dead_code)]
 
-
 extern crate alloc;
 
 mod heap;
 mod multiboot2;
 mod vga;
+mod acpi;
 
 use core::{
     arch::{asm, global_asm},
@@ -37,7 +37,7 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
     // mboot_ptr is passed by boot.s and assumend to be correct.
     let mboot_info = unsafe { Multiboot2Info::new(VirtAddr::new(mboot_ptr)) };
 
-    info!("{:?}\n", mboot_info);
+    info!("{:?}", mboot_info);
 
     panic!("finished with main()");
 }

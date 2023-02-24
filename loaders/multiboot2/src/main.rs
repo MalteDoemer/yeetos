@@ -8,11 +8,12 @@
 
 extern crate alloc;
 
+mod acpi;
 mod heap;
+mod initrd;
+mod mmap;
 mod multiboot2;
 mod vga;
-mod acpi;
-mod mmap;
 
 use core::{
     arch::{asm, global_asm},
@@ -23,7 +24,10 @@ use log::{error, info};
 use memory::VirtAddr;
 use multiboot2::Multiboot2Info;
 
-use crate::vga::{Color, VGAWriter};
+use crate::{
+    initrd::Initrd,
+    vga::{Color, VGAWriter},
+};
 
 global_asm!(include_str!("boot.s"), options(att_syntax));
 
@@ -38,8 +42,22 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
     // mboot_ptr is passed by boot.s and assumend to be correct.
     let mboot_info = unsafe { Multiboot2Info::new(VirtAddr::new(mboot_ptr)) };
 
-    info!("{:?}", mboot_info);
-    
+    let initrd_mod = mboot_info
+        .get_initrd_module()
+        .expect("initrd module not found");
+
+    // Safety:
+    // initrd_mod is assumed to be mapped and not used by anything else.
+    let initrd = unsafe { Initrd::from_module(initrd_mod) };
+
+    let tar = initrd.tar_archive();
+
+    for entry in tar.entries() {
+        if entry.filename().as_str() == "kernel" {
+            info!("found kernel");
+        }
+    }
+
     panic!("finished with main()");
 }
 

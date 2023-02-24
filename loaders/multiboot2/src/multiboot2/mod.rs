@@ -121,7 +121,7 @@ impl Multiboot2Info {
         }
     }
 
-    pub(crate) fn command_line(&self) -> Option<&String> {
-        self.cmdline.as_ref()
+    pub fn get_initrd_module(&self) -> Option<&ModuleDescriptor> {
+        self.modules.iter().find(|module| module.info == "initrd")
     }
 }

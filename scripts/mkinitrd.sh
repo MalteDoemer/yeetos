@@ -36,4 +36,4 @@ TEMP_DIR=$(mktemp -d)
 
 cp "$KERNEL_FILE" "$TEMP_DIR/kernel"
 
-cd "$TEMP_DIR" && tar -cf "$OUTPUT_FILE" ./*
+cd "$TEMP_DIR" && tar -cf "$OUTPUT_FILE" $(ls)

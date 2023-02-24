@@ -1,5 +1,7 @@
 use core::{fmt, ops};
 
+use crate::{PAGE_SHIFT, PAGE_SIZE};
+
 use super::vaddr::VirtAddr;
 
 pub struct TryFromVirtAddrError;
@@ -28,6 +30,29 @@ impl PhysAddr {
 
     pub const fn to_inner(self) -> Inner {
         self.0
+    }
+
+    /// Aligns the address down to `PAGE_SIZE`.
+    pub fn page_align_down(self) -> Self {
+        let addr = self.0 >> PAGE_SHIFT;
+        Self(addr << PAGE_SHIFT)
+    }
+
+    /// Aligns the address up to `PAGE_SIZE`.
+    /// 
+    /// ### Panics
+    /// based on the `overflow-checks` setting
+    pub fn page_align_up(self) -> Self {
+        let addr = self.0.next_multiple_of(PAGE_SIZE as Inner);
+        Self(addr)
+    }
+
+    /// Aligns the address up to `PAGE_SIZE`.
+    /// 
+    /// Returns `None` if the operation would overflow.
+    pub fn page_align_up_checked(self) -> Option<Self> {
+        let addr = self.0.checked_next_multiple_of(PAGE_SIZE as Inner)?;
+        Some(Self(addr))
     }
 
     /// Casts this physical address to a virtual address.

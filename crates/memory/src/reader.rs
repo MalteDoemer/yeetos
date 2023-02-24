@@ -44,7 +44,7 @@ impl MemoryReader {
     /// Skips `size` amount of bytes.
     ///
     /// ### Panics
-    /// Panics based on the `overflow-checks` setting (`true` for dev and `false` for release)
+    /// Panics based on the `overflow-checks`
     pub fn skip(&mut self, size: usize) {
         self.current += size
     }
@@ -53,7 +53,7 @@ impl MemoryReader {
     ///
     /// ### Panics
     /// - Panics if `alignment` is zero
-    /// - Panics based on the `overflow-checks` setting (`true` for dev and `false` for release)
+    /// - Panics based on the `overflow-checks`
     pub fn align_up(&mut self, alignment: usize) {
         let aligned = self.current.next_multiple_of(alignment);
 

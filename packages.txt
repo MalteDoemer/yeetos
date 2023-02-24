@@ -1,0 +1,9 @@
+
+Archlinux packages used to create the ISO:
+    grub
+    libisoburn
+    mtools
+
+
+Archlinux packages used to run qemu:
+    qemu-full

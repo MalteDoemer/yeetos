@@ -7,7 +7,7 @@ CONFIG=debug
 LOADER=multiboot2
 
 # qemu options
-MEMORY=2G
+MEMORY=6G
 
 
 TARGET=$(ARCH)-yeetos
@@ -58,7 +58,7 @@ qemu-no-kvm: $(ISO)
 qemu-debug: $(ISO)
 	@qemu-system-x86_64 -d cpu_reset -S -gdb tcp::9000 -m $(MEMORY)  -cdrom $(ISO)
 
-.PHONY: run clean clean-all  dump-kernel
+.PHONY: qemu qemu-no-kvm qemu-debug clean clean-all  dump-kernel
 
 # empty targe to force rebuild
 FORCE:

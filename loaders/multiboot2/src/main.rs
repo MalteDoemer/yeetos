@@ -12,6 +12,7 @@ mod heap;
 mod multiboot2;
 mod vga;
 mod acpi;
+mod mmap;
 
 use core::{
     arch::{asm, global_asm},
@@ -38,7 +39,7 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
     let mboot_info = unsafe { Multiboot2Info::new(VirtAddr::new(mboot_ptr)) };
 
     info!("{:?}", mboot_info);
-
+    
     panic!("finished with main()");
 }
 

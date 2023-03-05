@@ -47,6 +47,15 @@ clean-all: clean
 dump-kernel:
 	@objdump -x $(KERNEL_BIN)
 
+dissasemble-kernel:
+	@objdump -d --demangle=rust -M intel $(KERNEL_BIN)
+
+dump-loader:
+	@objdump -x $(LOADER_BIN)
+
+dissasemble-loader:
+	@objdump -d --demangle=rust -M intel $(LOADER_BIN)
+
 
 qemu: $(ISO)
 	@qemu-system-x86_64 --accel kvm -m $(MEMORY) -cdrom $(ISO)

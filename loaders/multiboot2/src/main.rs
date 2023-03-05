@@ -11,6 +11,7 @@ extern crate alloc;
 mod acpi;
 mod heap;
 mod initrd;
+mod kernel_image;
 mod mmap;
 mod multiboot2;
 mod vga;
@@ -26,6 +27,7 @@ use multiboot2::Multiboot2Info;
 
 use crate::{
     initrd::Initrd,
+    kernel_image::KernelImage,
     vga::{Color, VGAWriter},
 };
 
@@ -33,6 +35,7 @@ global_asm!(include_str!("boot.s"), options(att_syntax));
 
 #[no_mangle]
 pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
+    // initialize heap
     heap::init();
 
     // initialize logger
@@ -42,21 +45,13 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
     // mboot_ptr is passed by boot.s and assumend to be correct.
     let mboot_info = unsafe { Multiboot2Info::new(VirtAddr::new(mboot_ptr)) };
 
-    let initrd_mod = mboot_info
-        .get_initrd_module()
-        .expect("initrd module not found");
+    let initrd = Initrd::from_multiboot_info(&mboot_info);
 
-    // Safety:
-    // initrd_mod is assumed to be mapped and not used by anything else.
-    let initrd = unsafe { Initrd::from_module(initrd_mod) };
+    let kernel_image = KernelImage::from_initrd(&initrd);
 
-    let tar = initrd.tar_archive();
+    let kernel_image_size = kernel_image.memory_size().unwrap();
 
-    for entry in tar.entries() {
-        if entry.filename().as_str() == "kernel" {
-            info!("found kernel");
-        }
-    }
+    info!("kernel needs {} bytes of memory.", kernel_image_size);
 
     panic!("finished with main()");
 }

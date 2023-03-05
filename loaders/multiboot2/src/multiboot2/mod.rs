@@ -120,8 +120,4 @@ impl Multiboot2Info {
             rsdp_descriptor,
         }
     }
-
-    pub fn get_initrd_module(&self) -> Option<&ModuleDescriptor> {
-        self.modules.iter().find(|module| module.info == "initrd")
-    }
 }

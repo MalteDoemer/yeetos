@@ -4,7 +4,6 @@ KERNEL_BASE = 0xfffff00000000000;
 
 SECTIONS 
 {
-    . = 0x100000;
     . += KERNEL_BASE;
     
     /********* EXECUTABLE CODE *********/
@@ -20,7 +19,6 @@ SECTIONS
 
     __rodata_start = ALIGN(4K);
     .rodata ALIGN(4K) : {
-        *(.got)
         *(.rodata*)
         . = ALIGN(4K);
     }
@@ -47,8 +45,9 @@ SECTIONS
    
     /************** Trash **************/
 
-    /DISCARD/ : {
+    /* /DISCARD/ : {
+    *(.got)
        *(.eh_frame_hdr)
        *(.eh_frame)
-    }
+    } */
 }

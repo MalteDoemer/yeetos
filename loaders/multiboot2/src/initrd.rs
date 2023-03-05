@@ -1,10 +1,11 @@
 use memory::VirtAddr;
-use tar_no_std::TarArchiveRef;
+use tar_no_std::{ArchiveEntry, TarArchiveRef};
 
-use crate::multiboot2::ModuleDescriptor;
+use crate::multiboot2::{ModuleDescriptor, Multiboot2Info};
 
 pub struct Initrd<'a> {
     data: &'a [u8],
+    tar_archive: TarArchiveRef<'a>,
 }
 
 impl<'a> Initrd<'a> {
@@ -23,11 +24,36 @@ impl<'a> Initrd<'a> {
 
         let slice = unsafe { core::slice::from_raw_parts(start_addr as *const u8, size) };
 
-        Initrd { data: slice }
+        Initrd {
+            data: slice,
+            tar_archive: TarArchiveRef::new(slice),
+        }
     }
 
-    pub fn tar_archive(&self) -> TarArchiveRef {
-        TarArchiveRef::new(self.data)
+    /// Creates a `Initrd` from the multiboot2 info struct.
+    ///
+    /// ### Panics
+    /// Panics if no initrd module has been provided by the bootloader.
+    pub fn from_multiboot_info(mboot_info: &Multiboot2Info) -> Initrd {
+        let initrd_mod = mboot_info
+            .modules
+            .iter()
+            .find(|module| module.info == "initrd")
+            .expect("initrd module not found");
+
+        // Safety:
+        // initrd_mod is assumed to be mapped and not used by anything else.
+        unsafe { Initrd::from_module(initrd_mod) }
+    }
+
+    pub fn tar_archive(&self) -> &TarArchiveRef {
+        &self.tar_archive
+    }
+
+    pub fn file_by_name(&self, name: &str) -> Option<ArchiveEntry> {
+        self.tar_archive()
+            .entries()
+            .find(|entry| entry.filename().as_str() == name)
     }
 
     pub fn start_addr(&self) -> VirtAddr {

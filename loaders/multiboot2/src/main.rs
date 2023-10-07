@@ -41,17 +41,33 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
     // initialize logger
     boot_logger::init();
 
+    info!("intitialized boot logger...");
+
     // Safety:
     // mboot_ptr is passed by boot.s and assumend to be correct.
     let mboot_info = unsafe { Multiboot2Info::new(VirtAddr::new(mboot_ptr)) };
 
-    let initrd = Initrd::from_multiboot_info(&mboot_info);
+    let initrd_module = mboot_info
+        .module_by_name("initrd")
+        .expect("initrd module not found");
 
-    let kernel_image = KernelImage::from_initrd(&initrd);
+    // Safety:
+    // The memory from the initrd module should be safe to access.
+    let initrd = unsafe { Initrd::from_module(initrd_module) };
 
-    let kernel_image_size = kernel_image.memory_size().unwrap();
+    let kernel_file = initrd
+        .file_by_name("kernel")
+        .expect("kernel file not found");
+    let kernel_data = kernel_file.data();
 
-    info!("kernel needs {} bytes of memory.", kernel_image_size);
+    // The kernel image is loaded right after the initrd.
+    // TODO: add ASLR for the kernel
+    let kernel_load_addr = initrd.end_addr();
+
+    let kernel_image = KernelImage::new(kernel_load_addr, kernel_data)
+        .expect("unable to parse the kernel elf image");
+
+
 
     panic!("finished with main()");
 }

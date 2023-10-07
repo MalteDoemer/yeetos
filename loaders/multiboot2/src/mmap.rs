@@ -1,8 +1,11 @@
 use memory::{MemoryMap, MemoryMapEntry, MemoryMapEntryKind, PhysAddr};
 
-use crate::multiboot2::{ModuleDescriptor, Multiboot2Info};
+pub struct MemoryMapAddresses {
+    initrd_end_addr: PhysAddr,
+    kernel_end_addr: PhysAddr,
+}
 
-pub fn create_memory_map(_mboot: &Multiboot2Info) -> MemoryMap {
+pub fn create_memory_map(_initrd_end_addr: PhysAddr, _kernel_end_addr: PhysAddr) -> MemoryMap {
     todo!()
 }
 
@@ -37,7 +40,7 @@ fn get_loader_entry() -> MemoryMapEntry {
     }
 }
 
-fn get_boot_info_entry(initrd_module: ModuleDescriptor) -> MemoryMapEntry {
+fn get_boot_info_entry(initrd_end_addr: PhysAddr) -> MemoryMapEntry {
     // symbols defined in link.ld
     extern "C" {
         pub fn __boot_info_start();
@@ -46,11 +49,18 @@ fn get_boot_info_entry(initrd_module: ModuleDescriptor) -> MemoryMapEntry {
     // Note:
     // physical address = virtual address
     let boot_info_start = __boot_info_start as u64;
-    let boot_info_end = initrd_module.mod_end as u64;
 
     MemoryMapEntry {
         start: PhysAddr::new(boot_info_start),
-        end: PhysAddr::new(boot_info_end),
+        end: initrd_end_addr,
+        kind: MemoryMapEntryKind::KernelBootInfo,
+    }
+}
+
+fn get_kernel_image_entry(initrd_end_addr: PhysAddr, kernel_end_addr: PhysAddr) -> MemoryMapEntry {
+    MemoryMapEntry {
+        start: initrd_end_addr,
+        end: kernel_end_addr,
         kind: MemoryMapEntryKind::KernelBootInfo,
     }
 }

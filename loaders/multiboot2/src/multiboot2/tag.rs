@@ -5,7 +5,7 @@ use alloc::{
 use memory::MemoryReader;
 
 use super::{
-    tag_info::*, BasicMemoryInfo, BiosBootDevice, MemoryRegion, ModuleDescriptor, RSDPDescriptorV1,
+    tag_info::*, BasicMemoryInfo, BiosBootDevice, MemoryRegion, MultibootModule, RSDPDescriptorV1,
     RSDPDescriptorV2,
 };
 
@@ -15,7 +15,7 @@ pub(crate) enum Tag {
     BootLoaderName(String),
     BasicMemoryInfo(BasicMemoryInfo),
     BiosBootDevice(BiosBootDevice),
-    ModuleDescriptor(ModuleDescriptor),
+    ModuleDescriptor(MultibootModule),
     MemoryRegions(Vec<MemoryRegion>),
     OldRSDP(RSDPDescriptorV1),
     NewRSDP(RSDPDescriptorV2),
@@ -145,7 +145,7 @@ impl Tag {
 
             let str_slice = core::str::from_utf8(str_data).expect("module string not valid utf-8");
 
-            Tag::ModuleDescriptor(ModuleDescriptor {
+            Tag::ModuleDescriptor(MultibootModule {
                 mod_start,
                 mod_end,
                 info: str_slice.to_string(),

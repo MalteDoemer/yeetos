@@ -1,48 +1,32 @@
-use elf::{endian::NativeEndian, segment::SegmentTable, ElfBytes};
+use elf::{endian::NativeEndian, segment::SegmentTable, ElfBytes, ParseError};
+use memory::VirtAddr;
 
-use crate::initrd::Initrd;
-
+/// This struct represents the to be loaded kernel image.
+/// It contains the file data of the kernel image and
+/// the address at which the kernel should be loaded.
 pub struct KernelImage<'a> {
+    load_addr: VirtAddr,
     data: &'a [u8],
     elf_image: ElfBytes<'a, NativeEndian>,
 }
 
 impl<'a> KernelImage<'a> {
-    /// Create a `KernelImage` from the raw data.
-    ///
-    /// ### Panics
-    /// Panics if the kernel image contains invalid data.
-    pub fn new(data: &'a [u8]) -> Self {
-        let elf_image = ElfBytes::minimal_parse(data).expect("unable to parse kernel image");
-        Self { data, elf_image }
+    /// Create a `KernelImage` from the raw data and the load address.
+    pub fn new(load_addr: VirtAddr, data: &'a [u8]) -> Result<Self, ParseError> {
+        let elf_image = ElfBytes::minimal_parse(data)?;
+
+        Ok(Self {
+            load_addr,
+            data,
+            elf_image,
+        })
     }
 
-    /// Create a `KernelImage` from the initrd.
-    ///
-    /// ### Panics
-    /// - Panics if the initrd doesn't contain the kernel image
-    /// - Panics if the kernel image contains invalid data.
-    pub fn from_initrd(initrd: &'a Initrd) -> Self {
-        let kernel_file = initrd
-            .file_by_name("kernel")
-            .expect("unable to find kernel file");
-
-        Self::new(kernel_file.data())
+    pub fn elf_image(&self) -> &ElfBytes<'a, NativeEndian> {
+        &self.elf_image
     }
 
     pub fn segments(&self) -> Option<SegmentTable<'a, NativeEndian>> {
         self.elf_image.segments()
-    }
-
-    pub fn memory_size(&self) -> Option<usize> {
-        let mut res = 0;
-
-        for segment in self.segments()?.iter() {
-            if segment.p_type == elf::abi::PT_LOAD {
-                res += segment.p_memsz;
-            }
-        }
-
-        Some(res as usize)
     }
 }

@@ -55,7 +55,7 @@ pub struct MemoryRegion {
 }
 
 #[derive(Debug)]
-pub struct ModuleDescriptor {
+pub struct MultibootModule {
     pub mod_start: u32,
     pub mod_end: u32,
     pub info: String,
@@ -67,7 +67,7 @@ pub struct Multiboot2Info {
     pub loader_name: Option<String>,
     pub basic_memory_info: Option<BasicMemoryInfo>,
     pub bios_boot_device: Option<BiosBootDevice>,
-    pub modules: Vec<ModuleDescriptor>,
+    pub modules: Vec<MultibootModule>,
     pub memory_regions: Vec<MemoryRegion>,
     pub image_load_base_physical: Option<u32>,
     pub rsdp_descriptor: Option<RSDPDescriptor>,
@@ -119,5 +119,9 @@ impl Multiboot2Info {
             image_load_base_physical,
             rsdp_descriptor,
         }
+    }
+
+    pub fn module_by_name(&self, name: &str) -> Option<&MultibootModule> {
+        self.modules.iter().find(|module| module.info == name)
     }
 }

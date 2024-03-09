@@ -39,7 +39,7 @@ impl PhysAddr {
     }
 
     /// Aligns the address up to `PAGE_SIZE`.
-    /// 
+    ///
     /// ### Panics
     /// based on the `overflow-checks` setting
     pub fn page_align_up(self) -> Self {
@@ -48,11 +48,16 @@ impl PhysAddr {
     }
 
     /// Aligns the address up to `PAGE_SIZE`.
-    /// 
+    ///
     /// Returns `None` if the operation would overflow.
     pub fn page_align_up_checked(self) -> Option<Self> {
         let addr = self.0.checked_next_multiple_of(PAGE_SIZE as Inner)?;
         Some(Self(addr))
+    }
+
+    /// Checks if the address is aligned to `PAGE_SIZE`.
+    pub fn is_page_aligned(self) -> bool {
+        self == self.page_align_down()
     }
 
     /// Casts this physical address to a virtual address.

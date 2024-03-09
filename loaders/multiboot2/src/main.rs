@@ -67,7 +67,17 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
     let kernel_image = KernelImage::new(kernel_load_addr, kernel_data)
         .expect("unable to parse the kernel elf image");
 
+    let kernel_image_end_addr = kernel_image.compute_load_end_address();
 
+    let memory_map = mmap::create_memory_map(
+        &mboot_info,
+        initrd.end_addr().to_phys(),
+        kernel_image_end_addr.to_phys(),
+    );
+
+    for entry in memory_map {
+        info!("{:p}..{:p}: {:?}", entry.start, entry.end, entry.kind);
+    }
 
     panic!("finished with main()");
 }

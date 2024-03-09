@@ -45,10 +45,18 @@ impl MemoryMapEntry {
 
     pub fn new(start: PhysAddr, end: PhysAddr, kind: MemoryMapEntryKind) -> Self {
         Self {
-            start: start.page_align_down(),
-            end: end.page_align_up(),
+            start,
+            end,
             kind,
         }
+    }
+
+    pub fn size(&self) -> u64 {
+        self.end - self.start
+    }
+
+    pub fn is_page_aligned(&self) -> bool {
+        self.start.is_page_aligned() && self.end.is_page_aligned()
     }
 }
 

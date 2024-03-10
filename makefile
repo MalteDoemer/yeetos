@@ -8,7 +8,7 @@ LOADER=multiboot2
 
 # qemu options
 MEMORY=6G
-
+CORES=4
 
 TARGET=$(ARCH)-yeetos
 
@@ -58,14 +58,14 @@ dissasemble-loader:
 
 
 qemu: $(ISO)
-	@qemu-system-x86_64 --accel kvm -m $(MEMORY) -cdrom $(ISO)
+	@qemu-system-x86_64 -smp cpus=$(CORES) --accel kvm -m $(MEMORY) -cdrom $(ISO)
 
 qemu-no-kvm: $(ISO)
-	@qemu-system-x86_64 -m $(MEMORY) -cdrom $(ISO)
+	@qemu-system-x86_64 -smp cpus=$(CORES) -m $(MEMORY) -cdrom $(ISO)
 
 
 qemu-debug: $(ISO)
-	@qemu-system-x86_64 -d cpu_reset -S -gdb tcp::9000 -m $(MEMORY)  -cdrom $(ISO)
+	@qemu-system-x86_64 -d cpu_reset -S -gdb tcp::9000 -smp cpus=$(CORES) -m $(MEMORY)  -cdrom $(ISO)
 
 .PHONY: qemu qemu-no-kvm qemu-debug clean clean-all  dump-kernel
 

@@ -1,6 +1,8 @@
 #![no_std]
 #![no_main]
 #![deny(unsafe_op_in_unsafe_fn)]
+// needed for pit interrupt handler
+#![feature(abi_x86_interrupt)]
 // needed for the heap allocator
 #![feature(alloc_error_handler)]
 // enabled while still in early developement phase
@@ -9,6 +11,7 @@
 extern crate alloc;
 
 mod acpi;
+mod devices;
 mod heap;
 mod initrd;
 mod kernel_image;
@@ -78,6 +81,8 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
     for entry in memory_map {
         info!("{:p}..{:p}: {:?}", entry.start, entry.end, entry.kind);
     }
+
+    devices::init();
 
     panic!("finished with main()");
 }

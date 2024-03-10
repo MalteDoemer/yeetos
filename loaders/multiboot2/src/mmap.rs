@@ -219,6 +219,6 @@ fn get_kernel_image_entry(initrd_end_addr: PhysAddr, kernel_end_addr: PhysAddr) 
     MemoryMapEntry {
         start: initrd_end_addr,
         end: kernel_end_addr,
-        kind: MemoryMapEntryKind::KernelBootInfo,
+        kind: MemoryMapEntryKind::KernelImage,
     }
 }

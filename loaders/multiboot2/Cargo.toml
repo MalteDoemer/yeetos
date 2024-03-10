@@ -12,10 +12,11 @@ overflow-checks=true
 overflow-checks=true
 
 [dependencies]
+x86 = "0.52.0"
 spin = "0.9.4"
 log = "0.4.17"
-acpi = "4.1.1"
-tar-no-std = "0.1.8"
+acpi = "5.0.0"
+tar-no-std = "0.2.0"
 
 memory = { path = "../../crates/memory" }
 boot_logger = { path = "../../crates/boot_logger" }
@@ -26,6 +27,6 @@ default-features = false
 
 
 [dependencies.linked_list_allocator]
-version = "0.9.1"
+version = "0.10.5"
 default-features = false
 features = ["const_mut_refs"]

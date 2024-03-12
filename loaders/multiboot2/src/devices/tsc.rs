@@ -1,3 +1,23 @@
+//! This module implements a rudimentary implementation to
+//! measure elapsed time using the tsc register of the x86 cpu. 
+//! 
+//! Note that the tsc is normally not recomended to measure time
+//! since it is not guaranteed that every increment of the tsc takes
+//! the same time. But since we are not changing power states or cpu
+//! modes this should not be a serious problem.
+//! 
+//! It is also not recomended to use this module for longer time periods because
+//! there is no stride correction.
+//! 
+//! Some ideas and calculations are taken from the linux kernel: 
+//! https://github.com/torvalds/linux/blob/master/arch/x86/kernel/tsc.c
+//! 
+//! The idea of how to measure time using the tsc is as follows:
+//! 1. First compute the frequency of the tsc using the PIT
+//! 2. To get the current nanoseconds we scale the tsc count with the precomputed constant
+//! 
+//! More information is in the `init()` and `now_ns()` function.
+//! 
 use core::{
     arch::asm,
     sync::atomic::{AtomicU32, Ordering},
@@ -69,18 +89,12 @@ impl IdtEntry {
     }
 }
 
-// #[repr(C, packed)]
-// struct IDTR {
-//     size: u16,
-//     offset: u64,
-// }
-
 extern "x86-interrupt" fn pit_interrupt(_frame: IntStackFrame) {
     PIT_TICKS.fetch_add(1, Ordering::SeqCst);
     pic::send_eoi(0);
 }
 
-pub fn rdtsc() -> u64 {
+fn rdtsc() -> u64 {
     unsafe {
         let lower: u64;
         let higher: u64;

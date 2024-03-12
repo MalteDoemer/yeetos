@@ -1,3 +1,13 @@
+//! This module encapsulates the functionality of the PIC
+//! interrupt controller. On x86 based pc systems there are
+//! always two PIC's present, the primary and the secondary.
+//!
+//! All functions in this module must only be used after a
+//! call to `init()`. After a call to `init()` all IRQ's are
+//! masked and need to be manually unmasked if they are wanted.
+//!
+//! Note: the functions are not marked unsafe for simplicity, but
+//! they do need to be run with CPL=0 and only after `init()` has been called.
 use x86::io::{inb, outb};
 
 use super::io_delay;
@@ -5,10 +15,12 @@ use super::io_delay;
 pub const PRIMARY_VECTOR_OFFSET: u8 = 0x20;
 pub const SECONDARY_VECTOR_OFFSET: u8 = 0x28;
 
-pub const PRIMARY_PIC_PORT: u16 = 0x20;
-pub const SECONDARY_PIC_PORT: u16 = 0xA0;
+/// The standard port of the primary PIC on x86 based systems
+const PRIMARY_PIC_PORT: u16 = 0x20;
+/// The standard port of the secondary PIC on x86 based systems
+const SECONDARY_PIC_PORT: u16 = 0xA0;
 
-pub struct Pic(u16);
+struct Pic(u16);
 
 impl Pic {
     const CMD_PORT: u16 = 0;
@@ -43,15 +55,21 @@ impl Pic {
     }
 }
 
-pub fn mask_irq(mut vector: u8) {
+fn select_pic(vector: u8) -> (Pic, u8) {
+    if vector < 8 {
+        (Pic(PRIMARY_PIC_PORT), vector)
+    } else {
+        (Pic(SECONDARY_PIC_PORT), vector - 8)
+    }
+}
+
+/// Masks a specific IRQ (range 0..16).
+/// Masking an IRQ means the PIC will not
+/// generate this specific IRQ.
+pub fn mask_irq(vector: u8) {
     assert!(vector < 16);
 
-    let pic = if vector < 8 {
-        Pic(PRIMARY_PIC_PORT)
-    } else {
-        vector -= 8;
-        Pic(SECONDARY_PIC_PORT)
-    };
+    let (pic, vector) = select_pic(vector);
 
     // Safety: The PIC IO ports are safe to access
     unsafe {
@@ -61,15 +79,13 @@ pub fn mask_irq(mut vector: u8) {
     }
 }
 
-pub fn unmask_irq(mut vector: u8) {
+/// Unmask a specific IRQ (range 0..16).
+/// Unmasking an IRQ means the PIC is free
+/// to generate this specific IRQ
+pub fn unmask_irq(vector: u8) {
     assert!(vector < 16);
 
-    let pic = if vector < 8 {
-        Pic(PRIMARY_PIC_PORT)
-    } else {
-        vector -= 8;
-        Pic(SECONDARY_PIC_PORT)
-    };
+    let (pic, vector) = select_pic(vector);
 
     // Safety: The PIC IO ports are safe to access
     unsafe {
@@ -79,14 +95,15 @@ pub fn unmask_irq(mut vector: u8) {
     }
 }
 
+/// Send an end-of-interrupt signal to the
+/// PIC. This informs the PIC that a specific IRQ
+/// has been handled and it is free to generate this
+/// IRQ again. This function is usually called in the
+/// interrupt handler routine.
 pub fn send_eoi(vector: u8) {
     assert!(vector < 16);
 
-    let pic = if vector < 8 {
-        Pic(PRIMARY_PIC_PORT)
-    } else {
-        Pic(SECONDARY_PIC_PORT)
-    };
+    let (pic, _) = select_pic(vector);
 
     // Safety: The PIC IO ports are safe to access
     unsafe {
@@ -94,6 +111,11 @@ pub fn send_eoi(vector: u8) {
     }
 }
 
+/// Initializes the two PIC's, sets the vector
+/// offsets to 0x20 and 0x28 and masks all IRQ's.
+///
+/// This function needs to be called before any other
+/// function in this module and it is not thread safe.
 pub fn init() {
     let primary = Pic(PRIMARY_PIC_PORT);
     let secondary = Pic(SECONDARY_PIC_PORT);

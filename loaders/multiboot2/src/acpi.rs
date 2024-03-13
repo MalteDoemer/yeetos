@@ -2,7 +2,7 @@ use core::ptr::NonNull;
 
 use acpi::{AcpiHandler, AcpiTables, PhysicalMapping};
 
-use crate::multiboot2::{RSDPDescriptor, RSDPDescriptorV1, RSDPDescriptorV2};
+use crate::multiboot2::{Multiboot2Info, RSDPDescriptor, RSDPDescriptorV1, RSDPDescriptorV2};
 
 const HIGHEST_MAPPED_ADDRESS: usize = 4 * 1024 * 1024 * 1024;
 
@@ -46,6 +46,46 @@ impl AcpiHandler for YeetOSAcpiHandler {
 
     fn unmap_physical_region<T>(_region: &PhysicalMapping<Self, T>) {
         // nothing to do here
+    }
+}
+
+extern "C" {
+
+    fn copy_ap_trampoline();
+    fn startup_ap(lapic_base: u64, ap_id: u64);
+
+}
+
+pub fn acpi_init(mboot_info: &Multiboot2Info) {
+    let acpi_tables = get_acpi_tables(
+        &mboot_info
+            .rsdp_descriptor
+            .expect("no RSDP descriptor provided by multiboot2"),
+    );
+
+    let platform_info = acpi_tables
+        .platform_info()
+        .expect("unable to get acpi platform info");
+
+    let processor_info = platform_info
+        .processor_info
+        .expect("unable to get acpi processor info");
+
+    let im = platform_info.interrupt_model;
+
+    let apic = match im {
+        acpi::InterruptModel::Apic(apic) => apic,
+        _ => panic!("acpi interrupt model unkown"),
+    };
+
+    unsafe {
+        copy_ap_trampoline();
+    }
+
+    for proc in processor_info.application_processors.iter() {
+        unsafe {
+            startup_ap(apic.local_apic_address, proc.local_apic_id.into());
+        }
     }
 }
 

@@ -142,3 +142,23 @@ pub fn busy_sleep_ms(millis: u64) {
         core::hint::spin_loop()
     }
 }
+
+pub fn busy_sleep_us(micros: u64) {
+    let start = now_ns();
+
+    let goal = start + micros * 1_000;
+
+    while now_ns() < goal {
+        core::hint::spin_loop()
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn sleep_ms(millis: u64) {
+    busy_sleep_ms(millis);
+}
+
+#[no_mangle]
+pub extern "C" fn sleep_us(micros: u64) {
+    busy_sleep_us(micros);
+}

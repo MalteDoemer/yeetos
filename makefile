@@ -58,14 +58,14 @@ dissasemble-loader:
 
 
 qemu: $(ISO)
-	@qemu-system-x86_64 -smp cpus=$(CORES) --accel kvm -m $(MEMORY) -cdrom $(ISO)
+	@qemu-system-x86_64 -smp cpus=$(CORES) --accel kvm -m $(MEMORY) -cdrom $(ISO) -serial stdio 
 
 qemu-no-kvm: $(ISO)
-	@qemu-system-x86_64 -smp cpus=$(CORES) -m $(MEMORY) -cdrom $(ISO)
+	@qemu-system-x86_64 -smp cpus=$(CORES) -m $(MEMORY) -cdrom $(ISO) -serial stdio 
 
 
 qemu-debug: $(ISO)
-	@qemu-system-x86_64 -d cpu_reset -S -gdb tcp::9000 -smp cpus=$(CORES) -m $(MEMORY)  -cdrom $(ISO)
+	@qemu-system-x86_64 -d cpu_reset -S -gdb tcp::9000 -smp cpus=$(CORES) -m $(MEMORY)  -cdrom $(ISO) -serial stdio 
 
 .PHONY: qemu qemu-no-kvm qemu-debug clean clean-all  dump-kernel
 

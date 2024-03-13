@@ -1,29 +1,24 @@
 //! This module implements a rudimentary implementation to
-//! measure elapsed time using the tsc register of the x86 cpu. 
-//! 
+//! measure elapsed time using the tsc register of the x86 cpu.
+//!
 //! Note that the tsc is normally not recomended to measure time
 //! since it is not guaranteed that every increment of the tsc takes
 //! the same time. But since we are not changing power states or cpu
 //! modes this should not be a serious problem.
-//! 
+//!
 //! It is also not recomended to use this module for longer time periods because
 //! there is no stride correction.
-//! 
-//! Some ideas and calculations are taken from the linux kernel: 
+//!
+//! Some ideas and calculations are taken from the linux kernel:
 //! https://github.com/torvalds/linux/blob/master/arch/x86/kernel/tsc.c
-//! 
+//!
 //! The idea of how to measure time using the tsc is as follows:
 //! 1. First compute the frequency of the tsc using the PIT
 //! 2. To get the current nanoseconds we scale the tsc count with the precomputed constant
-//! 
+//!
 //! More information is in the `init()` and `now_ns()` function.
-//! 
-use core::{
-    arch::asm,
-    sync::atomic::{AtomicU32, Ordering},
-};
-
-use x86::dtables::{lidt, DescriptorTablePointer};
+//!
+use core::{arch::asm, sync::atomic::Ordering};
 
 use crate::devices::pit;
 
@@ -33,66 +28,6 @@ const NS_SCALE: u64 = 16777216;
 
 /// This variable will contain the value: `(1_000_000_000 * NS_SCALE) / cycles_per_second`
 static mut TSC_NS_FACTOR: u64 = 0;
-
-static PIT_TICKS: AtomicU32 = AtomicU32::new(0);
-
-#[repr(C)]
-struct IntStackFrame {
-    frame: [u64; 5],
-}
-
-#[repr(C)]
-#[derive(Clone, Copy)]
-struct IdtEntry {
-    offset1: u16,
-    selector: u16,
-    ist: u8,
-    type_attrs: u8,
-    offset2: u16,
-    offset3: u32,
-    reserved: u32,
-}
-
-impl IdtEntry {
-    pub const fn empty() -> Self {
-        IdtEntry {
-            offset1: 0,
-            selector: 0,
-            ist: 0,
-            type_attrs: 0,
-            offset2: 0,
-            offset3: 0,
-            reserved: 0,
-        }
-    }
-
-    pub fn irq_handler(handler_address: usize) -> Self {
-        let raw = handler_address;
-
-        let offset1 = (raw & 0xFFFF) as u16;
-        let offset2 = ((raw >> 16) & 0xFFFF) as u16;
-        let offset3 = ((raw >> 32) & 0xFFFFFFFF) as u32;
-
-        let selector = 1 << 3; // Kernel code segment
-        let ist = 0;
-        let type_attrs = 0x8E; // p=0b1, dpl=0b00, type=0b1110
-
-        IdtEntry {
-            offset1,
-            selector,
-            ist,
-            type_attrs,
-            offset2,
-            offset3,
-            reserved: 0,
-        }
-    }
-}
-
-extern "x86-interrupt" fn pit_interrupt(_frame: IntStackFrame) {
-    PIT_TICKS.fetch_add(1, Ordering::SeqCst);
-    pic::send_eoi(0);
-}
 
 fn rdtsc() -> u64 {
     unsafe {
@@ -123,18 +58,6 @@ pub fn init() {
     // These constants are found in pit.rs
     //
     // Now we have to figure out how many tsc cyles happen in one pit-tick.
-    // To do this we install a temporary interrupt handler for irq0.
-    //
-
-    // Create a temporary IDT
-    let mut temp_idt: [IdtEntry; 256] = [IdtEntry::empty(); 256];
-    temp_idt[0x20] = IdtEntry::irq_handler(pit_interrupt as usize);
-
-    // Load IDT
-    let desc = DescriptorTablePointer::new_from_slice(&temp_idt);
-    unsafe {
-        lidt(&desc);
-    };
 
     // Unmask the first IRQ
     pic::unmask_irq(0);
@@ -144,13 +67,13 @@ pub fn init() {
         asm!("sti");
     }
 
-    let initial_tick = PIT_TICKS.load(Ordering::SeqCst);
+    let initial_tick = pit::PIT_TICKS.load(Ordering::SeqCst);
 
     // wait until the start of the next pit-tick
     let mut start_tick;
     let mut start_cycle;
     loop {
-        start_tick = PIT_TICKS.load(Ordering::SeqCst);
+        start_tick = pit::PIT_TICKS.load(Ordering::SeqCst);
         start_cycle = rdtsc();
         if initial_tick != start_tick {
             break;
@@ -161,7 +84,7 @@ pub fn init() {
     let mut end_tick;
     let mut end_cycle;
     loop {
-        end_tick = PIT_TICKS.load(Ordering::SeqCst);
+        end_tick = pit::PIT_TICKS.load(Ordering::SeqCst);
         end_cycle = rdtsc();
         if end_tick != start_tick {
             break;
@@ -175,12 +98,6 @@ pub fn init() {
 
     // mask IRQ 0 again
     pic::mask_irq(0);
-
-    // remove temporary IDT
-    let desc: DescriptorTablePointer<()> = DescriptorTablePointer::default();
-    unsafe {
-        lidt(&desc);
-    }
 
     // we should only have waited one pit-tick.
     assert_eq!(start_tick + 1, end_tick);

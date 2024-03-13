@@ -3,6 +3,8 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 // needed for pit interrupt handler
 #![feature(abi_x86_interrupt)]
+// needed for acpi module
+#![feature(allocator_api)]
 // needed for the heap allocator
 #![feature(alloc_error_handler)]
 // enabled while still in early developement phase
@@ -13,6 +15,7 @@ extern crate alloc;
 mod acpi;
 mod devices;
 mod heap;
+mod idt;
 mod initrd;
 mod kernel_image;
 mod mmap;
@@ -36,13 +39,21 @@ use crate::{
 
 global_asm!(include_str!("boot.s"), options(att_syntax));
 
+global_asm!(include_str!("ap_trampoline.s"), options(att_syntax));
+
 #[no_mangle]
 pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
+    // initialize IDT
+    idt::init();
+
     // initialize heap
     heap::init();
 
     // initialize logger
     boot_logger::init();
+
+    // initialize PIC, PIT and TSC
+    devices::init();
 
     info!("intitialized boot logger...");
 
@@ -81,8 +92,6 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
     for entry in memory_map {
         info!("{:p}..{:p}: {:?}", entry.start, entry.end, entry.kind);
     }
-
-    devices::init();
 
     panic!("finished with main()");
 }

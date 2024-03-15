@@ -39,7 +39,7 @@ use crate::{
 
 global_asm!(include_str!("boot.s"), options(att_syntax));
 
-global_asm!(include_str!("ap_trampoline.s"), options(att_syntax));
+global_asm!(include_str!("ap_startup.s"), options(att_syntax));
 
 #[no_mangle]
 pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
@@ -81,29 +81,41 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
         .file_by_name("kernel")
         .expect("kernel file not found");
 
-    // The kernel image is loaded right after the initrd
-    let kernel_load_addr = initrd.end_addr();
-
-    // Partially parse the kernel elf image
-    let kernel_image = KernelImage::new(kernel_load_addr, kernel_file.data())
-        .expect("unable to parse the kernel elf image");
-
-    // Calculate the end address of the kernel image
-    let kernel_image_end_addr = kernel_image.compute_load_end_address();
+    // Create the KernelImage struct:
+    // - The load address will be initrd.end_addr()
+    // - Right after the load address there will be
+    //   place for num_cores * KERNEL_STACK_SIZE bytes
+    //   to be used as stack memory
+    // - After that the kernel code, rodata and data segments
+    //   will be loaded
+    // Note: this function does not yet load the kernel.
+    let kernel_image = KernelImage::new(
+        initrd.end_addr(),
+        acpi::number_of_cores(&acpi_tables),
+        kernel_file.data(),
+    )
+    .expect("unable to parse the kernel elf image");
 
     // Create the physical memory map
-    let _memory_map = mmap::create_memory_map(
+    let memory_map = mmap::create_memory_map(
         &mboot_info,
         initrd.end_addr().to_phys(),
-        kernel_image_end_addr.to_phys(),
+        kernel_image.compute_load_end_address().to_phys(),
+    );
+
+    // Initialize some global variables that the ap initialization
+    // code will use to set up the stacks for each core.
+    acpi::init_kernel_stack_vars(
+        kernel_image.kernel_stacks_start(),
+        kernel_image.kernel_stack_size(),
     );
 
     // Startup the Application Processors
-    acpi::acpi_startup_aps(&acpi_tables);
+    acpi::startup_aps(&acpi_tables);
 
-    // for entry in memory_map {
-    //     info!("{:p}..{:p}: {:?}", entry.start, entry.end, entry.kind);
-    // }
+    for entry in memory_map {
+        info!("{:p}..{:p}: {:?}", entry.start, entry.end, entry.kind);
+    }
 
     panic!("finished with main()");
 }

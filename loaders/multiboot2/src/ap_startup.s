@@ -1,4 +1,3 @@
-proc_count = 0x7000;
 ap_trampoline_dest = 0x8000
 
 .section .text
@@ -11,8 +10,6 @@ ap_trampoline:
     movw $0x3F8, %dx
     movb $0x61, %al
     outb %al, %dx
-    // movw $1, %ax
-    // lock xaddw %ax, proc_count
 0:
     hlt
     jmp 0b

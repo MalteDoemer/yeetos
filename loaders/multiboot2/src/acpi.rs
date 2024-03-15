@@ -11,9 +11,9 @@ const HIGHEST_MAPPED_ADDRESS: usize = 4 * 1024 * 1024 * 1024;
 /// The job of the AcpiHandler is to map physical memory regions that are needed by the acpi crate.
 /// Since this bootloader identity maps the first 4GiB of memory we don't need to do anything for addresses below 4GiB.
 #[derive(Clone, Copy)]
-pub struct YeetOSAcpiHandler;
+pub struct IdentityMapAcpiHandler;
 
-impl AcpiHandler for YeetOSAcpiHandler {
+impl AcpiHandler for IdentityMapAcpiHandler {
     unsafe fn map_physical_region<T>(
         &self,
         physical_address: usize,
@@ -36,7 +36,7 @@ impl AcpiHandler for YeetOSAcpiHandler {
                     virtual_start,
                     region_length,
                     mapped_length,
-                    YeetOSAcpiHandler,
+                    IdentityMapAcpiHandler,
                 )
             }
         } else {
@@ -56,13 +56,7 @@ extern "C" {
 
 }
 
-pub fn acpi_init(mboot_info: &Multiboot2Info) {
-    let acpi_tables = get_acpi_tables(
-        &mboot_info
-            .rsdp_descriptor
-            .expect("no RSDP descriptor provided by multiboot2"),
-    );
-
+pub fn acpi_startup_aps(acpi_tables: &AcpiTables<IdentityMapAcpiHandler>) {
     let platform_info = acpi_tables
         .platform_info()
         .expect("unable to get acpi platform info");
@@ -89,7 +83,7 @@ pub fn acpi_init(mboot_info: &Multiboot2Info) {
     }
 }
 
-pub fn get_acpi_tables(rsdp: &RSDPDescriptor) -> AcpiTables<YeetOSAcpiHandler> {
+pub fn get_acpi_tables(rsdp: &RSDPDescriptor) -> AcpiTables<IdentityMapAcpiHandler> {
     let addr = match rsdp {
         RSDPDescriptor::V1(ref rsdp) => rsdp as *const RSDPDescriptorV1 as usize,
         RSDPDescriptor::V2(ref rsdp) => rsdp as *const RSDPDescriptorV2 as usize,
@@ -97,7 +91,7 @@ pub fn get_acpi_tables(rsdp: &RSDPDescriptor) -> AcpiTables<YeetOSAcpiHandler> {
 
     // Safety:
     // All memory from the rsdp should be correctly mapped and safe to dereference.
-    let tables = unsafe { AcpiTables::from_rsdp(YeetOSAcpiHandler, addr) }
+    let tables = unsafe { AcpiTables::from_rsdp(IdentityMapAcpiHandler, addr) }
         .expect("parsing acpi tables failed");
 
     tables

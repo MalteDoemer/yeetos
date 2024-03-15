@@ -43,53 +43,63 @@ global_asm!(include_str!("ap_trampoline.s"), options(att_syntax));
 
 #[no_mangle]
 pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
-    // initialize IDT
+    // Initialize logger
+    boot_logger::init();
+    info!("intitialized boot logger...");
+
+    // Initialize IDT
     idt::init();
 
-    // initialize heap
+    // Initialize heap
     heap::init();
 
-    // initialize logger
-    boot_logger::init();
-
-    // initialize PIC, PIT and TSC
+    // Initialize PIC, PIT and TSC
     devices::init();
-
-    info!("intitialized boot logger...");
 
     // Safety:
     // mboot_ptr is passed by boot.s and assumend to be correct.
     let mboot_info = unsafe { Multiboot2Info::new(VirtAddr::new(mboot_ptr)) };
 
+    // Parse the ACPI tables
+    let acpi_tables = acpi::get_acpi_tables(
+        &mboot_info
+            .rsdp_descriptor
+            .expect("rsdp descriptor not present"),
+    );
+
+    // Get the INITRD module loaded by the multiboot2 loader
     let initrd_module = mboot_info
         .module_by_name("initrd")
         .expect("initrd module not found");
 
     // Safety:
-    // The memory from the initrd module should be safe to access.
+    // The memory from the initrd module should be safe to access
     let initrd = unsafe { Initrd::from_module(initrd_module) };
 
+    // Search for the kernel file in the INITRD
     let kernel_file = initrd
         .file_by_name("kernel")
         .expect("kernel file not found");
-    let kernel_data = kernel_file.data();
 
-    // The kernel image is loaded right after the initrd.
-    // TODO: add ASLR for the kernel
+    // The kernel image is loaded right after the initrd
     let kernel_load_addr = initrd.end_addr();
 
-    let kernel_image = KernelImage::new(kernel_load_addr, kernel_data)
+    // Partially parse the kernel elf image
+    let kernel_image = KernelImage::new(kernel_load_addr, kernel_file.data())
         .expect("unable to parse the kernel elf image");
 
+    // Calculate the end address of the kernel image
     let kernel_image_end_addr = kernel_image.compute_load_end_address();
 
+    // Create the physical memory map
     let _memory_map = mmap::create_memory_map(
         &mboot_info,
         initrd.end_addr().to_phys(),
         kernel_image_end_addr.to_phys(),
     );
 
-    acpi::acpi_init(&mboot_info);
+    // Startup the Application Processors
+    acpi::acpi_startup_aps(&acpi_tables);
 
     // for entry in memory_map {
     //     info!("{:p}..{:p}: {:?}", entry.start, entry.end, entry.kind);

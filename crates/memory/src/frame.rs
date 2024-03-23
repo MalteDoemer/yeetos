@@ -47,6 +47,19 @@ impl Frame {
     pub const fn checked_diff(self, other: Frame) -> Option<Inner> {
         other.0.checked_sub(self.0)
     }
+
+    pub const fn add(self, other: Inner) -> Self {
+        self.checked_add(other).unwrap()
+    }
+
+    pub const fn checked_add(self, other: Inner) -> Option<Self> {
+        let res = self.0.checked_add(other);
+
+        match res {
+            Some(res) => Some(Frame::from_inner(res)),
+            None => None,
+        }
+    }
 }
 
 impl core::iter::Step for Frame {

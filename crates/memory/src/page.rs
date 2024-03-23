@@ -8,13 +8,14 @@ pub struct Page(Inner);
 
 impl Page {
     /// Returns the `Page` that contains `addr`.
-    /// # Note
-    /// `addr` has to be in canonical form.
-    #[cfg(target_arch = "x86_64")]
     pub const fn new(addr: VirtAddr) -> Self {
-        let inner = addr.to_inner();
-        assert!(inner <= 0x0000_8000_0000_0000 || inner >= 0xffff_8000_0000_0000);
-        Page(inner >> PAGE_SHIFT)
+        Page(addr.to_inner() >> PAGE_SHIFT)
+    }
+
+    #[cfg(target_arch = "x86_64")]
+    pub const fn is_canonical(&self) -> bool {
+        let addr = self.to_addr().to_inner();
+        addr < 0x0000_8000_0000_0000 || addr >= 0xffff_8000_0000_0000
     }
 
     pub const fn from_inner(inner: Inner) -> Self {
@@ -50,6 +51,19 @@ impl Page {
     /// Calculates the number of frame in `self..other`
     pub const fn checked_diff(self, other: Page) -> Option<Inner> {
         other.0.checked_sub(self.0)
+    }
+
+    pub const fn add(self, other: Inner) -> Page {
+        self.checked_add(other).unwrap()
+    }
+
+    pub const fn checked_add(self, other: Inner) -> Option<Page> {
+        let res = self.0.checked_add(other);
+
+        match res {
+            Some(res) => Some(Page::from_inner(res)),
+            None => None,
+        }
     }
 }
 

@@ -1,6 +1,6 @@
 use core::{fmt, ops};
 
-use crate::{PAGE_SHIFT, PAGE_SIZE};
+use crate::{FRAME_SHIFT, FRAME_SIZE};
 
 use super::vaddr::VirtAddr;
 
@@ -32,32 +32,32 @@ impl PhysAddr {
         self.0
     }
 
-    /// Aligns the address down to `PAGE_SIZE`.
-    pub fn page_align_down(self) -> Self {
-        let addr = self.0 >> PAGE_SHIFT;
-        Self(addr << PAGE_SHIFT)
+    /// Aligns the address down to `FRAME_SIZE`.
+    pub fn frame_align_down(self) -> Self {
+        let addr = self.0 >> FRAME_SHIFT;
+        Self(addr << FRAME_SHIFT)
     }
 
-    /// Aligns the address up to `PAGE_SIZE`.
+    /// Aligns the address up to `FRAME_SIZE`.
     ///
     /// ### Panics
     /// based on the `overflow-checks` setting
-    pub fn page_align_up(self) -> Self {
-        let addr = self.0.next_multiple_of(PAGE_SIZE as Inner);
+    pub fn frame_align_up(self) -> Self {
+        let addr = self.0.next_multiple_of(FRAME_SIZE as Inner);
         Self(addr)
     }
 
-    /// Aligns the address up to `PAGE_SIZE`.
+    /// Aligns the address up to `FRAME_SIZE`.
     ///
     /// Returns `None` if the operation would overflow.
-    pub fn page_align_up_checked(self) -> Option<Self> {
-        let addr = self.0.checked_next_multiple_of(PAGE_SIZE as Inner)?;
+    pub fn frame_align_up_checked(self) -> Option<Self> {
+        let addr = self.0.checked_next_multiple_of(FRAME_SIZE as Inner)?;
         Some(Self(addr))
     }
 
-    /// Checks if the address is aligned to `PAGE_SIZE`.
-    pub fn is_page_aligned(self) -> bool {
-        self == self.page_align_down()
+    /// Checks if the address is aligned to `FRAME_SIZE`.
+    pub fn is_frame_aligned(self) -> bool {
+        self == self.frame_align_down()
     }
 
     /// Casts this physical address to a virtual address.

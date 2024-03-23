@@ -55,8 +55,8 @@ impl MemoryMapEntry {
         self.end - self.start
     }
 
-    pub fn is_page_aligned(&self) -> bool {
-        self.start.is_page_aligned() && self.end.is_page_aligned()
+    pub fn is_frame_aligned(&self) -> bool {
+        self.start.is_frame_aligned() && self.end.is_frame_aligned()
     }
 }
 

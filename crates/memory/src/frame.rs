@@ -1,7 +1,7 @@
 use crate::{PhysAddr, FRAME_SHIFT};
 
 #[cfg(target_arch = "x86_64")]
-type Inner = u64;
+pub(crate) type Inner = u64;
 
 #[repr(transparent)]
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]

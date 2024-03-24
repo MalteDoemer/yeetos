@@ -8,6 +8,7 @@
 
 mod arch;
 mod frame;
+mod misc;
 mod mmap;
 mod paddr;
 mod page;
@@ -18,6 +19,7 @@ mod vrange;
 
 pub use arch::*;
 pub use frame::*;
+pub use misc::*;
 pub use mmap::*;
 pub use paddr::*;
 pub use page::*;

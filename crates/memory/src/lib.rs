@@ -12,6 +12,7 @@ mod misc;
 mod mmap;
 mod paddr;
 mod page;
+pub mod paging;
 mod prange;
 mod reader;
 mod vaddr;

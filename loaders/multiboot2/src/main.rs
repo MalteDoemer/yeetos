@@ -20,6 +20,7 @@ mod initrd;
 mod kernel_image;
 mod mmap;
 mod multiboot2;
+mod paging;
 mod vga;
 
 use core::{
@@ -37,9 +38,9 @@ use crate::{
     vga::{Color, VGAWriter},
 };
 
-global_asm!(include_str!("boot.s"), options(att_syntax));
+global_asm!(include_str!("asm/boot.s"), options(att_syntax));
 
-global_asm!(include_str!("ap_startup.s"), options(att_syntax));
+global_asm!(include_str!("asm/ap_startup.s"), options(att_syntax));
 
 #[no_mangle]
 pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
@@ -102,6 +103,8 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
         initrd.end_addr().to_phys(),
         kernel_image.compute_load_end_address().to_phys(),
     );
+
+    paging::test();
 
     // Initialize some global variables that the ap initialization
     // code will use to set up the stacks for each core.

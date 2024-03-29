@@ -1,15 +1,24 @@
 
 // keep in sync with mmap.rs
-
 ZER0_FRAME = 0x0000
 PML4T_ADDR = 0x1000
 PDPT_ADDR = 0x2000
 PDT_START_ADDR = 0x3000
 PDT_END_ADDR = 0x7000
 
+// various flag bits for the paging entries
+// Note: ENTRY_USAGE_*_BITS are not used by the hardware, but by EntryUsage enum in rust
+PRESENT_FLAG           = 0b01
+WRITABLE_FLAG          = 0b10
+PAGE_SIZE_FLAG         = 0b01 << 7
+ENTRY_USAGE_PAGE_BITS  = 0b01 << 9
+ENTRY_USAGE_TABLE_BITS = 0b10 << 9
 
-READ_WRITE_BITS = 0b11
-PAGE_SIZE_BITS = (1 << 7)
+
+TABLE_ENTRY_BITS = PRESENT_FLAG | WRITABLE_FLAG | ENTRY_USAGE_TABLE_BITS
+
+HUGE_PAGE_ENTRY_BITS = PRESENT_FLAG | WRITABLE_FLAG | PAGE_SIZE_FLAG | ENTRY_USAGE_PAGE_BITS
+
 
 
 MULTIBOOT2_HEADER_MAGIC = 0xe85250d6
@@ -125,14 +134,16 @@ start:
 
     rep stosl
  
-    // the first PML4 entry points to the PDPT
-    movl $(PDPT_ADDR | READ_WRITE_BITS), PML4T_ADDR
-    
+    // the first PML4T entry points to the PDPT
+    movl $(PDPT_ADDR | TABLE_ENTRY_BITS), PML4T_ADDR
+
+    // the last PML4T entry points to itself, this enables "recursive mapping"
+    movl $(PML4T_ADDR | TABLE_ENTRY_BITS), (PML4T_ADDR + 8 * 511)
 
     // write the PDPT entries to point to the PDT
     movl $PDPT_ADDR, %edi                           // write to the PDPT
-    movl $(PDT_START_ADDR | READ_WRITE_BITS), %eax  // start with the first PDT
-    movl $(PDT_END_ADDR | READ_WRITE_BITS), %ecx    // stop on the last PDT
+    movl $(PDT_START_ADDR | TABLE_ENTRY_BITS), %eax // start with the first PDT
+    movl $(PDT_END_ADDR | TABLE_ENTRY_BITS), %ecx   // stop on the last PDT
 1:
     movl %eax, (%edi)
     addl $0x1000, %eax
@@ -144,7 +155,7 @@ start:
     // fill out the PDT's
 
     movl $PDT_START_ADDR, %edi                      // write to the PDT's
-    movl $(PAGE_SIZE_BITS | READ_WRITE_BITS), %eax  // start add address 0 with PS, R/W and P bit set
+    movl $(HUGE_PAGE_ENTRY_BITS), %eax              // start add address 0 with PS, R/W and P bit set and usage=0b01
     movl $PDT_END_ADDR, %ecx                        // stop at the last PDT
 1:
     movl %eax, (%edi)

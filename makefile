@@ -48,13 +48,13 @@ dump-kernel:
 	@objdump -x $(KERNEL_BIN)
 
 dissasemble-kernel:
-	@objdump -d --demangle=rust -M intel $(KERNEL_BIN)
+	@objdump -d --demangle=rust -M intel --disassembler-color=on $(KERNEL_BIN)
 
 dump-loader:
 	@objdump -x $(LOADER_BIN)
 
 dissasemble-loader:
-	@objdump -d --demangle=rust -M intel $(LOADER_BIN)
+	@objdump -d --demangle=rust -M intel --disassembler-color=on $(LOADER_BIN)
 
 
 qemu: $(ISO)

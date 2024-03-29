@@ -19,6 +19,7 @@ pub enum EntryUsage {
 }
 
 #[repr(transparent)]
+#[derive(Clone, Copy)]
 #[derive(Zeroize)]
 pub struct Entry(u64);
 

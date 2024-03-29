@@ -1,5 +1,8 @@
 #[cfg(target_arch = "x86_64")]
 mod x86_64 {
+    /// Base address of the kernel address space
+    pub const KERNEL_BASE: usize = 0xfffff00000000000;
+
     /// The size in bytes of a logical page.
     pub const PAGE_SIZE: usize = 4096;
     pub const PAGE_SHIFT: usize = 12;

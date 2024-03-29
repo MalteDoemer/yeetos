@@ -119,8 +119,10 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
     acpi::startup_aps(&acpi_tables);
 
 
-    devices::tsc::busy_sleep_ms(100);
+    // Enable the higher half mapping
+    paging::enable_higher_half();
 
+    devices::tsc::busy_sleep_ms(100);
     info!("we have a total of {} cores running!", acpi::AP_COUNT.load(Ordering::SeqCst) + 1);
 
 

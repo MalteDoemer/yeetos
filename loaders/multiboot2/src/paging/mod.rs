@@ -1,10 +1,9 @@
-//! The 64-bit kernel uses 4 Level paging.
-//! The (current) page tables will be accessed using the recursive mapping technique.
-//!
 use core::ops::{Deref, DerefMut};
 
-use log::info;
-use memory::paging::{Level4, Table};
+use memory::{
+    paging::{Level4, Table},
+    KERNEL_BASE,
+};
 use spin::{Mutex, MutexGuard};
 
 /// This is a pointer to the recursive mapped pml4t.
@@ -43,13 +42,9 @@ pub fn get_page_map_level_four() -> PageMapLevelFourGuard<'static> {
     PageMapLevelFourGuard { table, guard }
 }
 
-pub fn test() {
-    let p4 = get_page_map_level_four();
-
-    let pdpt = unsafe { p4.next_table(0).unwrap() };
-    let pdt = unsafe { pdpt.next_table(0).unwrap() };
-
-    let entry = &pdt[0];
-
-    info!("{:?}", entry.usage());
+/// Enable the higher half mapping.
+pub fn enable_higher_half() {
+    let mut p4 = get_page_map_level_four();
+    let pml4t_high_index = (KERNEL_BASE >> 39) & 0x1FF;
+    p4[pml4t_high_index] = p4[0];
 }

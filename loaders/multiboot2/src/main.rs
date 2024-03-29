@@ -25,7 +25,7 @@ mod vga;
 
 use core::{
     arch::{asm, global_asm},
-    panic::PanicInfo,
+    panic::PanicInfo, sync::atomic::Ordering,
 };
 
 use log::{error, info};
@@ -104,7 +104,9 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
         kernel_image.compute_load_end_address().to_phys(),
     );
 
-    paging::test();
+    for entry in memory_map {
+        info!("{:p}..{:p}: {:?}", entry.start, entry.end, entry.kind);
+    }
 
     // Initialize some global variables that the ap initialization
     // code will use to set up the stacks for each core.
@@ -116,9 +118,11 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
     // Startup the Application Processors
     acpi::startup_aps(&acpi_tables);
 
-    for entry in memory_map {
-        info!("{:p}..{:p}: {:?}", entry.start, entry.end, entry.kind);
-    }
+
+    devices::tsc::busy_sleep_ms(100);
+
+    info!("we have a total of {} cores running!", acpi::AP_COUNT.load(Ordering::SeqCst) + 1);
+
 
     panic!("finished with main()");
 }

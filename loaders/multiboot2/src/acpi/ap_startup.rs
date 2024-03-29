@@ -1,11 +1,11 @@
 use core::sync::atomic::{AtomicUsize, Ordering};
 
 use acpi::AcpiTables;
+use log::info;
 use memory::VirtAddr;
 
 use super::acpi_handler::IdentityMapAcpiHandler;
 
-#[no_mangle]
 pub static AP_COUNT: AtomicUsize = AtomicUsize::new(0);
 
 #[no_mangle]
@@ -52,4 +52,13 @@ pub fn startup_aps(acpi_tables: &AcpiTables<IdentityMapAcpiHandler>) {
             startup_ap(apic.local_apic_address, proc.local_apic_id.into());
         }
     }
+}
+
+#[no_mangle]
+pub extern "C" fn rust_entry_ap(ap_id: usize) -> ! {
+    AP_COUNT.fetch_add(1, Ordering::SeqCst);
+
+    info!("AP {} started", ap_id);
+
+    loop {}
 }

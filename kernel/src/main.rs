@@ -1,35 +1,25 @@
 #![no_std]
 #![no_main]
 
+mod ensure_image;
+
 use core::{arch::asm, panic::PanicInfo};
 
-static TEST4: [u64; 256] = [55; 256];
+use boot_info::BootInfoHeader;
 
 #[no_mangle]
-static mut TEST3: u64 = 23;
-
-static mut TEST: u64 = 0;
-
-#[no_mangle]
-pub extern "C" fn kernel_main() {
-    unsafe {
-        TEST = 6;
-        TEST3 = 66;
+pub extern "C" fn kernel_main(_boot_info: &BootInfoHeader, proc_id: usize) {
+    if proc_id == 0 {
+        unsafe { ensure_image::test() };
     }
 
-    let _x = TEST4[55];
+
 
     unsafe {
         asm!("mov dx, 0x3F8", "mov al, 0x64", "out dx, al",);
     }
 
     loop {}
-}
-
-pub fn test() {
-    unsafe {
-        TEST = TEST4[11];
-    }
 }
 
 #[panic_handler]

@@ -13,6 +13,7 @@
 extern crate alloc;
 
 mod acpi;
+mod boot_info;
 mod devices;
 mod heap;
 mod idt;
@@ -116,7 +117,7 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
         kernel_image_info.end().to_phys(),
     );
 
-    for entry in memory_map {
+    for entry in &memory_map {
         info!("{:p}..{:p}: {:?}", entry.start, entry.end, entry.kind);
     }
 
@@ -133,14 +134,15 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
     // parse elf structure and load the kernel into memory
     kernel_image.load_kernel().expect("failed to load kernel");
 
-    // Enable the higher half mapping
+    // initialize the boot_info header
+    boot_info::init_boot_info(&mboot_info, &memory_map, &initrd, &kernel_image_info);
+
+    // enable the higher half mapping
     paging::enable_higher_half();
 
     let entry_point = to_higher_half(kernel_image.get_kernel_entry_point());
 
     info!("kernel entry point: {:?}", entry_point);
-
-    devices::tsc::busy_sleep_ms(100);
 
     info!(
         "we have a total of {} cores running!",

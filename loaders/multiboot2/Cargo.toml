@@ -6,10 +6,10 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [profile.dev]
-overflow-checks=true
+overflow-checks = true
 
 [profile.release]
-overflow-checks=true
+overflow-checks = true
 
 [dependencies]
 x86 = "0.52.0"
@@ -19,6 +19,7 @@ acpi = "5.0.0"
 tar-no-std = "0.2.0"
 
 memory = { path = "../../crates/memory" }
+boot_info = { path = "../../crates/boot_info" }
 boot_logger = { path = "../../crates/boot_logger" }
 
 [dependencies.elf]

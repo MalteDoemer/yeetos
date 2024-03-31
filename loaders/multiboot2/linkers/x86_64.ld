@@ -37,7 +37,6 @@ SECTIONS
 
     .boot_info ALIGN(4K) (NOLOAD) : {
         __boot_info_start = .;
-        . += 4096;
     }
 
     __load_end = ALIGN(4K);

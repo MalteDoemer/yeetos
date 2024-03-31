@@ -1,5 +1,5 @@
 [target.x86_64-yeetos]
-rustflags = ["-Csoft-float", "-Clink-args=--script=linkers/x86_64.ld" ]
+rustflags = ["-Csoft-float", "-Clink-arg=--entry=kernel_main", "-Clink-arg=--image-base=0x00" ]
 
 [unstable]
 build-std-features = ["compiler-builtins-mem"]

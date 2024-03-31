@@ -246,6 +246,20 @@ long_mode:
     // call rust entry point (doesn't return)
     call rust_entry
 
+
+// This function calls the kernel entry point.
+// Parameters:
+// - %rdi = boot info pointer
+// - %rsx = processor id
+// - %rdx = address of the kernel entry_point
+// - %rcx = stack pointer
+jmp_kernel_entry:
+    // load new stack pointer
+    movq %rcx, %rsp
+
+    // call entry point (no return)
+    jmpq *%rdx
+
 .section .rodata
 
 multiboot2_error_msg:

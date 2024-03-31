@@ -25,11 +25,12 @@ mod vga;
 
 use core::{
     arch::{asm, global_asm},
-    panic::PanicInfo, sync::atomic::Ordering,
+    panic::PanicInfo,
+    sync::atomic::Ordering,
 };
 
 use log::{error, info};
-use memory::VirtAddr;
+use memory::{to_higher_half, VirtAddr};
 use multiboot2::Multiboot2Info;
 
 use crate::{
@@ -41,6 +42,15 @@ use crate::{
 global_asm!(include_str!("asm/boot.s"), options(att_syntax));
 
 global_asm!(include_str!("asm/ap_startup.s"), options(att_syntax));
+
+extern "C" {
+    fn jmp_kernel_entry(
+        boot_info_ptr: usize,
+        processor_id: usize,
+        entry_point: usize,
+        stack_ptr: usize,
+    ) -> !;
+}
 
 #[no_mangle]
 pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
@@ -97,11 +107,13 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
     )
     .expect("unable to parse the kernel elf image");
 
+    let kernel_image_info = kernel_image.get_kernel_image_info();
+
     // Create the physical memory map
     let memory_map = mmap::create_memory_map(
         &mboot_info,
         initrd.end_addr().to_phys(),
-        kernel_image.compute_load_end_address().to_phys(),
+        kernel_image_info.end().to_phys(),
     );
 
     for entry in memory_map {
@@ -111,20 +123,29 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
     // Initialize some global variables that the ap initialization
     // code will use to set up the stacks for each core.
     acpi::init_kernel_stack_vars(
-        kernel_image.kernel_stacks_start(),
-        kernel_image.kernel_stack_size(),
+        kernel_image_info.stack.start().to_addr(),
+        kernel_image.get_kernel_stack_size(),
     );
 
     // Startup the Application Processors
     acpi::startup_aps(&acpi_tables);
 
+    // parse elf structure and load the kernel into memory
+    kernel_image.load_kernel().expect("failed to load kernel");
 
     // Enable the higher half mapping
     paging::enable_higher_half();
 
-    devices::tsc::busy_sleep_ms(100);
-    info!("we have a total of {} cores running!", acpi::AP_COUNT.load(Ordering::SeqCst) + 1);
+    let entry_point = to_higher_half(kernel_image.get_kernel_entry_point());
 
+    info!("kernel entry point: {:?}", entry_point);
+
+    devices::tsc::busy_sleep_ms(100);
+
+    info!(
+        "we have a total of {} cores running!",
+        acpi::AP_COUNT.load(Ordering::SeqCst) + 1
+    );
 
     panic!("finished with main()");
 }

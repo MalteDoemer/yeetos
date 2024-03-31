@@ -1,8 +1,10 @@
 #![no_std]
 
+pub mod boot_logger_info;
 pub mod kernel_image_info;
 pub mod platform_info;
 
+use boot_logger_info::BootLoggerInfo;
 use kernel_image_info::KernelImageInfo;
 use memory::{MemoryMap, VirtAddr};
 use platform_info::PlatformInfo;
@@ -44,6 +46,8 @@ pub struct BootInfoHeader {
     pub platform_info: PlatformInfo,
     /// Physical Memory map
     pub memory_map: MemoryMap,
+    /// A fixed size string containing to logging output during the boot loader
+    pub boot_logger: BootLoggerInfo,
     /// The address of the initial ramdisk (initrd).
     pub initrd_addr: VirtAddr,
     /// The size in bytes of the initial ramdisk (initrd).
@@ -59,6 +63,7 @@ impl BootInfoHeader {
             kernel_image_info: KernelImageInfo::empty(),
             platform_info: PlatformInfo::None,
             memory_map: MemoryMap::new(),
+            boot_logger: BootLoggerInfo::new_const(),
             initrd_addr: VirtAddr::zero(),
             initrd_size: 0,
         }

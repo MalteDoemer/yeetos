@@ -9,3 +9,5 @@ edition = "2021"
 log = "0.4.17"
 spin = "0.9.4"
 arrayvec = { version = "0.7.2", default-features = false }
+
+boot_info = { path = "../boot_info" }

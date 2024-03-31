@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 memory = { path = "../memory" }
+arrayvec = { version = "0.7.2", default-features = false }

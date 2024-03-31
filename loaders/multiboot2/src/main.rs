@@ -126,20 +126,19 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
     // parse elf structure and load the kernel into memory
     kernel_image.load_kernel().expect("failed to load kernel");
 
-    // initialize the boot_info header
-    boot_info::init_boot_info(&mboot_info, &memory_map, &initrd, &kernel_image_info);
-
     // enable the higher half mapping
     paging::enable_higher_half();
 
     let entry_point = to_higher_half(kernel_image.get_kernel_entry_point());
-
     info!("kernel entry point: {:?}", entry_point);
 
     info!(
         "we have a total of {} cores running!",
         acpi::AP_COUNT.load(Ordering::SeqCst) + 1
     );
+
+    // initialize the boot_info header
+    boot_info::init_boot_info(&mboot_info, &memory_map, &initrd, &kernel_image_info);
 
     // this releases all started AP's to enter the kernel
     KERNEL_ENTRY.call_once(|| entry_point);
@@ -155,7 +154,7 @@ pub fn panic(info: &PanicInfo) -> ! {
     boot_logger::get(|log| {
         use core::fmt::Write;
         let mut writer = VGAWriter::new(Color::White, Color::Black);
-        let _ = writer.write_str(log);
+        let _ = writer.write_str(log.as_str());
     });
 
     loop {

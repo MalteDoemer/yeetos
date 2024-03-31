@@ -1,9 +1,10 @@
 #![no_std]
 
-use arrayvec::ArrayString;
-use spin::Mutex;
+use core::ops::Deref;
 
-const BOOT_LOG_BUFFER_SIZE: usize = 2 * 1024;
+use arrayvec::ArrayString;
+use boot_info::boot_logger_info::BOOT_LOG_BUFFER_SIZE;
+use spin::Mutex;
 
 static BUFFER: Mutex<ArrayString<BOOT_LOG_BUFFER_SIZE>> = Mutex::new(ArrayString::new_const());
 
@@ -31,8 +32,7 @@ pub fn init() {
     log::set_max_level(log::LevelFilter::Trace);
 }
 
-pub fn get<F: FnOnce(&str) -> ()>(f: F) {
+pub fn get<F: FnOnce(&ArrayString<BOOT_LOG_BUFFER_SIZE>) -> ()>(f: F) {
     let guard = BUFFER.lock();
-    let s = guard.as_str();
-    f(s);
+    f(guard.deref())
 }

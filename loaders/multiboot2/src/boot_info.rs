@@ -48,6 +48,10 @@ pub fn init_boot_info<'a>(
     boot_info.platform_info = get_platform_info(mboot);
     boot_info.memory_map = get_memory_map(map);
 
+    boot_logger::get(|log| {
+        boot_info.boot_logger = *log;
+    });
+
     boot_info.initrd_addr = to_higher_half(initrd.start_addr());
     boot_info.initrd_size = initrd.size();
 }

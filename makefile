@@ -47,13 +47,13 @@ clean-all: clean
 dump-kernel:
 	@objdump -x $(KERNEL_BIN)
 
-dissasemble-kernel:
+disassemble-kernel:
 	@objdump -d --demangle=rust -M intel --disassembler-color=on $(KERNEL_BIN)
 
 dump-loader:
 	@objdump -x $(LOADER_BIN)
 
-dissasemble-loader:
+disassemble-loader:
 	@objdump -d --demangle=rust -M intel --disassembler-color=on $(LOADER_BIN)
 
 

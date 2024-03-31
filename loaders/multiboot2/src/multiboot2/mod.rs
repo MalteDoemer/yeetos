@@ -14,7 +14,7 @@ pub struct BasicMemoryInfo {
     pub mem_upper: u32,
 }
 
-#[repr(align(4))]
+#[repr(C, packed)]
 #[derive(Debug, Clone, Copy)]
 pub struct RSDPDescriptorV1 {
     pub signature: [u8; 8],
@@ -24,13 +24,13 @@ pub struct RSDPDescriptorV1 {
     pub rsdt_physical_address: u32,
 }
 
-#[repr(align(4))]
+#[repr(C, packed)]
 #[derive(Debug, Clone, Copy)]
 pub struct RSDPDescriptorV2 {
     pub v1: RSDPDescriptorV1,
     pub length: u32,
-    pub xsdt_physical_address: u32,
-    pub extended_checksum: u32,
+    pub xsdt_physical_address: u64,
+    pub extended_checksum: u8,
     pub reserved: [u8; 3],
 }
 

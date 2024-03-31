@@ -1,19 +1,33 @@
-#[repr(C)]
+use memory::{VirtAddr, VirtualRange};
+
 pub struct KernelImageInfo {
-    /// Start address of the kernel stack area
-    pub kernel_stacks_start: VirtAddr,
-    /// Size of a single kernel stack in bytes.
-    pub kernel_stack_size: usize,
-    /// Start address of the kernel code segment.
-    pub kernel_code_start: VirtAddr,
-    /// Size of the kernel code segment in bytes.
-    pub kernel_code_size: usize,
-    /// Start address of the kernel rodata segment.
-    pub kernel_rodata_start: VirtAddr,
-    /// Size of the kernel rodata segment in bytes.
-    pub kernel_rodata_size: usize,
-    /// Start address of the kernel data segment.
-    pub kernel_data_start: VirtAddr,
-    /// Size of the kernel data segment in bytes.
-    pub kernel_data_size: usize,
+    pub stack: VirtualRange,
+    pub rodata: VirtualRange,
+    pub code: VirtualRange,
+    pub relro: VirtualRange,
+    pub data: VirtualRange,
+}
+
+impl KernelImageInfo {
+    pub const fn empty() -> Self {
+        KernelImageInfo {
+            stack: VirtualRange::zero(),
+            rodata: VirtualRange::zero(),
+            code: VirtualRange::zero(),
+            relro: VirtualRange::zero(),
+            data: VirtualRange::zero(),
+        }
+    }
+
+    pub fn start(&self) -> VirtAddr {
+        self.stack.start().to_addr()
+    }
+
+    pub fn end(&self) -> VirtAddr {
+        self.data.end().to_addr()
+    }
+
+    pub fn size_in_bytes(&self) -> usize {
+        self.end() - self.start()
+    }
 }

@@ -3,6 +3,7 @@
 pub mod kernel_image_info;
 pub mod platform_info;
 
+use kernel_image_info::KernelImageInfo;
 use memory::{MemoryMap, VirtAddr};
 use platform_info::PlatformInfo;
 
@@ -29,7 +30,6 @@ pub const BOOT_INFO_STRUCT_V1: usize = 1;
 /// ----------------
 /// ```
 ///
-#[repr(C)]
 pub struct BootInfoHeader {
     /// Virtual address of this struct
     pub boot_info_addr: VirtAddr,
@@ -44,6 +44,23 @@ pub struct BootInfoHeader {
     pub platform_info: PlatformInfo,
     /// Physical Memory map
     pub memory_map: MemoryMap,
-    /// The data of the initial ramdisk (initrd).
-    pub initrd: &[u8],
+    /// The address of the initial ramdisk (initrd).
+    pub initrd_addr: VirtAddr,
+    /// The size in bytes of the initial ramdisk (initrd).
+    pub initrd_size: usize,
+}
+
+impl BootInfoHeader {
+    pub const fn empty() -> Self {
+        BootInfoHeader {
+            boot_info_addr: VirtAddr::zero(),
+            boot_info_size: 0,
+            boot_info_version: BOOT_INFO_STRUCT_V1,
+            kernel_image_info: KernelImageInfo::empty(),
+            platform_info: PlatformInfo::None,
+            memory_map: MemoryMap::new(),
+            initrd_addr: VirtAddr::zero(),
+            initrd_size: 0,
+        }
+    }
 }

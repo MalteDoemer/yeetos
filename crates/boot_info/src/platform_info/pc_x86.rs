@@ -1,6 +1,4 @@
-
-#[repr(C)]
-enum Rsdp {
+pub enum Rsdp {
     V1(RsdpV1),
     V2(RsdpV2),
 }
@@ -27,7 +25,6 @@ pub struct RsdpV2 {
     pub reserved: [u8; 3],
 }
 
-#[repr(C)]
 pub struct PCx86Info {
     pub rsdp: Rsdp,
 }

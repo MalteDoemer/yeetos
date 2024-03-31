@@ -9,7 +9,9 @@ use boot_info::{
     },
     BootInfoHeader, BOOT_INFO_STRUCT_V1,
 };
-use memory::{to_higher_half, MemoryMap, MemoryMapEntry, Page, VirtualRange, MEMORY_MAP_ENTRIES};
+use memory::{
+    to_higher_half, MemoryMap, MemoryMapEntry, Page, VirtAddr, VirtualRange, MEMORY_MAP_ENTRIES,
+};
 
 use crate::{
     initrd::Initrd,
@@ -19,6 +21,11 @@ use crate::{
 #[link_section = ".boot_info"]
 static mut BOOT_INFO_HEADER: BootInfoHeader = BootInfoHeader::empty();
 
+pub fn get_boot_info_addr() -> VirtAddr {
+    let boot_info_ptr = unsafe { addr_of_mut!(BOOT_INFO_HEADER) };
+    to_higher_half((boot_info_ptr as usize).into())
+}
+
 pub fn init_boot_info<'a>(
     mboot: &Multiboot2Info,
     map: &Vec<MemoryMapEntry>,
@@ -27,10 +34,9 @@ pub fn init_boot_info<'a>(
 ) {
     // Safety: this function is only called in the BSP
     // and any further access only happens after this function finished.
-    let boot_info_ptr = unsafe { addr_of_mut!(BOOT_INFO_HEADER) };
-    let boot_info = unsafe { &mut *boot_info_ptr };
+    let boot_info = unsafe { &mut *addr_of_mut!(BOOT_INFO_HEADER) };
 
-    let boot_info_start = to_higher_half((boot_info_ptr as usize).into());
+    let boot_info_start = get_boot_info_addr();
     let boot_info_end = to_higher_half(initrd.end_addr());
 
     boot_info.boot_info_addr = boot_info_start;

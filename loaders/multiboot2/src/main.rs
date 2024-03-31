@@ -35,6 +35,7 @@ use memory::{to_higher_half, VirtAddr};
 use multiboot2::Multiboot2Info;
 
 use crate::{
+    acpi::{make_jump_to_kernel, KERNEL_ENTRY},
     initrd::Initrd,
     kernel_image::KernelImage,
     vga::{Color, VGAWriter},
@@ -43,15 +44,6 @@ use crate::{
 global_asm!(include_str!("asm/boot.s"), options(att_syntax));
 
 global_asm!(include_str!("asm/ap_startup.s"), options(att_syntax));
-
-extern "C" {
-    fn jmp_kernel_entry(
-        boot_info_ptr: usize,
-        processor_id: usize,
-        entry_point: usize,
-        stack_ptr: usize,
-    ) -> !;
-}
 
 #[no_mangle]
 pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
@@ -149,7 +141,11 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
         acpi::AP_COUNT.load(Ordering::SeqCst) + 1
     );
 
-    panic!("finished with main()");
+    // this releases all started AP's to enter the kernel
+    KERNEL_ENTRY.call_once(|| entry_point);
+
+    // BSP has id of 0
+    make_jump_to_kernel(0, entry_point);
 }
 
 #[panic_handler]

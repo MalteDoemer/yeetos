@@ -2,11 +2,16 @@ use core::sync::atomic::{AtomicUsize, Ordering};
 
 use acpi::AcpiTables;
 use log::info;
-use memory::VirtAddr;
+use memory::{to_higher_half, VirtAddr};
+use spin::Once;
+
+use crate::boot_info;
 
 use super::acpi_handler::IdentityMapAcpiHandler;
 
 pub static AP_COUNT: AtomicUsize = AtomicUsize::new(0);
+
+pub static KERNEL_ENTRY: Once<VirtAddr> = Once::new();
 
 #[no_mangle]
 pub static KERNEL_STACKS_VADDR: AtomicUsize = AtomicUsize::new(0);
@@ -17,6 +22,12 @@ pub static KERNEL_STACK_SIZE: AtomicUsize = AtomicUsize::new(0);
 extern "C" {
     fn copy_ap_trampoline();
     fn startup_ap(lapic_base: u64, ap_id: u64);
+    fn jmp_kernel_entry(
+        boot_info_ptr: usize,
+        processor_id: usize,
+        entry_point: usize,
+        stack_ptr: usize,
+    ) -> !;
 }
 
 // Initializes the kernel stack variables for the ap initialization code.
@@ -60,5 +71,34 @@ pub extern "C" fn rust_entry_ap(ap_id: usize) -> ! {
 
     info!("AP {} started", ap_id);
 
-    loop {}
+    // this waits until the BSP is finished initializing
+    let entry_point = KERNEL_ENTRY.wait();
+
+    make_jump_to_kernel(ap_id, *entry_point);
+}
+
+pub fn make_jump_to_kernel(processor_id: usize, entry_point_addr: VirtAddr) -> ! {
+    validate_processor_id(processor_id);
+
+    let boot_info = boot_info::get_boot_info_addr();
+
+    // calculate stack
+    let stacks_base = to_higher_half(KERNEL_STACKS_VADDR.load(Ordering::SeqCst).into());
+    let stack_size = KERNEL_STACK_SIZE.load(Ordering::SeqCst);
+    let stack_addr = stacks_base + processor_id * stack_size;
+
+    unsafe {
+        jmp_kernel_entry(
+            boot_info.to_inner(),
+            processor_id,
+            entry_point_addr.to_inner(),
+            stack_addr.to_inner(),
+        )
+    };
+}
+
+/// This function validates that processor_id's are in range 0..num_cores
+fn validate_processor_id(processor_id: usize) {
+    let num_cores = AP_COUNT.load(Ordering::SeqCst) + 1;
+    assert!(processor_id < num_cores);
 }

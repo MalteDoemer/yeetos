@@ -253,6 +253,7 @@ long_mode:
 // - %rsx = processor id
 // - %rdx = address of the kernel entry_point
 // - %rcx = stack pointer
+.global jmp_kernel_entry
 jmp_kernel_entry:
     // load new stack pointer
     movq %rcx, %rsp

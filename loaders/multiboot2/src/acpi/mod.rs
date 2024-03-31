@@ -9,7 +9,10 @@ use acpi_handler::IdentityMapAcpiHandler;
 
 pub use ap_startup::startup_aps;
 pub use ap_startup::init_kernel_stack_vars;
+pub use  ap_startup::make_jump_to_kernel;
 pub use ap_startup::AP_COUNT;
+pub use ap_startup::KERNEL_ENTRY;
+
 
 pub fn number_of_cores(acpi_tables: &AcpiTables<IdentityMapAcpiHandler>) -> usize {
     acpi_tables

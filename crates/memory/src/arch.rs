@@ -1,5 +1,7 @@
 #[cfg(target_arch = "x86_64")]
 mod x86_64 {
+    use crate::VirtAddr;
+
     /// Base address of the kernel address space
     pub const KERNEL_BASE: usize = 0xfffff00000000000;
 
@@ -13,6 +15,11 @@ mod x86_64 {
 
     /// The number of entries in a page table.
     pub const PAGE_TABLE_ENTRIES: usize = 512;
+
+    /// Adds a fixed offset of `KERNEL_BASE` to the address.
+    pub fn to_higher_half(addr: VirtAddr) -> VirtAddr {
+        addr + KERNEL_BASE
+    }
 }
 
 #[cfg(target_arch = "x86_64")]

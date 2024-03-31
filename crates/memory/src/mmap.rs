@@ -66,7 +66,7 @@ pub struct MemoryMap {
 }
 
 impl MemoryMap {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             entries: [MemoryMapEntry::empty(); MEMORY_MAP_ENTRIES],
         }

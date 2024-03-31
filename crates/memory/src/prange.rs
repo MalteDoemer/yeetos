@@ -30,6 +30,22 @@ impl PhysicalRange {
         }
     }
 
+    /// Creates a new `PhysicalRange`.
+    ///
+    /// # Panics
+    /// If `end - start` underflows.
+    pub const fn new_diff(start: Frame, end: Frame) -> Self {
+        let num_frames = end.diff(start);
+        PhysicalRange { start, num_frames }
+    }
+
+    pub const fn zero() -> Self {
+        PhysicalRange {
+            start: Frame::zero(),
+            num_frames: 0,
+        }
+    }
+
     pub const fn start(&self) -> Frame {
         self.start
     }
@@ -59,16 +75,13 @@ impl PhysicalRange {
         self.start()..self.end()
     }
 
-
     /// Checks if this physical range contains the given frame.
     ///
     /// # Panics
     /// If `start + num_frames` overflows.
-    pub fn contains_frame(&self, frame: Frame) -> bool  {
+    pub fn contains_frame(&self, frame: Frame) -> bool {
         frame >= self.start && frame < self.end()
     }
-
-
 
     /// Checks if this physical range completly contains the other range.
     ///
@@ -83,8 +96,7 @@ impl PhysicalRange {
     /// # Panics
     /// If `start + num_frames` overflows.
     pub fn overlaps_with(&self, range: PhysicalRange) -> bool {
-        range.start() >= self.start() && range.start() <= self.end()
-            || range.end() >= self.start() && range.end() <= self.end()
+        self.contains_frame(range.start()) || range.contains_frame(self.start())
     }
 
     /// Creates the union of both ranges i.e. `min(self.start(), range.start())..max(self.end(), range.end())`

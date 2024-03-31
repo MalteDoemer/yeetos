@@ -30,6 +30,22 @@ impl VirtualRange {
         Self::checked_new(start, num_pages).unwrap()
     }
 
+    /// Creates a new `VirtualRange`.
+    ///
+    /// # Panics
+    /// If `end - start` underflows.
+    pub const fn new_diff(start: Page, end: Page) -> Self {
+        let num_pages = end.diff(start);
+        VirtualRange { start, num_pages }
+    }
+
+    pub const fn zero() -> Self {
+        VirtualRange {
+            start: Page::zero(),
+            num_pages: 0,
+        }
+    }
+
     pub const fn start(&self) -> Page {
         self.start
     }
@@ -80,8 +96,7 @@ impl VirtualRange {
     /// # Panics
     /// If `start + num_pages` overflows.
     pub fn overlaps_with(&self, range: VirtualRange) -> bool {
-        range.start() >= self.start() && range.start() <= self.end()
-            || range.end() >= self.start() && range.end() <= self.end()
+        self.contains_page(range.start()) || range.contains_page(self.start())
     }
 
     /// Creates the union of both ranges i.e. `min(self.start(), range.start())..max(self.end(), range.end())`

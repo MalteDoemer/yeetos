@@ -41,16 +41,14 @@ impl Page {
         self.0
     }
 
-    /// Calculates the number of frames in `self..other`
-    /// # Note
-    /// `other` must be greater or equal than `self`
+    /// Performs unsigned subtraction: `self.0 - other.0`
     pub const fn diff(self, other: Page) -> Inner {
         self.checked_diff(other).unwrap()
     }
 
-    /// Calculates the number of frame in `self..other`
+    /// Performs unsigned subtraction: `self.0 - other.0`
     pub const fn checked_diff(self, other: Page) -> Option<Inner> {
-        other.0.checked_sub(self.0)
+        self.0.checked_sub(other.0)
     }
 
     pub const fn add(self, other: Inner) -> Page {

@@ -17,6 +17,7 @@ mod arch;
 mod boot_info;
 mod devices;
 mod heap;
+mod idt;
 mod initrd;
 mod kernel_image;
 mod multiboot2;
@@ -42,13 +43,15 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
     info!("intitialized boot logger...");
 
     // Initialize IDT
-    arch::idt::init();
+    idt::init();
 
     // Initialize heap
     heap::init();
 
     // Initialize PIC, PIT and TSC
     devices::init();
+
+    // panic!("test");
 
     // Safety:
     // mboot_ptr is passed by boot.s and assumend to be correct.

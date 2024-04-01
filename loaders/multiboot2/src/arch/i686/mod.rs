@@ -1,6 +1,5 @@
 use core::arch::global_asm;
 
-pub mod idt;
 pub mod mmap;
 pub mod paging;
 

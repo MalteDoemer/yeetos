@@ -1,12 +1,7 @@
-//! This module handles setting up an IDT for the bootloader.
-//! Note: this IDT is only intended to be used by the bootloader
-//! and the kernel should set up its own IDT after gaining control.
-
 use core::arch::asm;
 
 use log::info;
 use x86::{
-    bits64::segmentation::Descriptor64,
     dtables::{lidt, DescriptorTablePointer},
     irq::{
         DIVIDE_ERROR_VECTOR, DOUBLE_FAULT_VECTOR, GENERAL_PROTECTION_FAULT_VECTOR,
@@ -18,29 +13,82 @@ use x86::{
 
 use crate::devices::{pic, pit};
 
+#[cfg(target_arch = "x86")]
+mod arch {
+    use x86::segmentation::Descriptor;
+
+    pub type DescriptorType = Descriptor;
+    pub type InnerType = u32;
+
+    #[repr(C)]
+    pub struct IntStackFrame {
+        eflags: u32,
+        cs: u32,
+        eip: u32,
+    }
+
+    impl IntStackFrame {
+        pub fn flags(&self) -> u32 {
+            self.eflags
+        }
+
+        pub fn code_segment(&self) -> u32 {
+            self.cs
+        }
+
+        pub fn instruction_pointer(&self) -> u32 {
+            self.eip
+        }
+    }
+}
+
+#[cfg(target_arch = "x86_64")]
+mod arch {
+    use x86::bits64::segmentation::Descriptor64;
+
+    pub type DescriptorType = Descriptor64;
+    pub type InnerType = u64;
+
+    #[repr(C)]
+    pub struct IntStackFrame {
+        rflags: u64,
+        cs: u64,
+        rip: u64,
+    }
+
+    impl IntStackFrame {
+        pub fn flags(&self) -> u64 {
+            self.rflags
+        }
+
+        pub fn code_segment(&self) -> u64 {
+            self.cs
+        }
+
+        pub fn instruction_pointer(&self) -> u64 {
+            self.rip
+        }
+    }
+}
+
+pub use arch::IntStackFrame;
+
 pub const NUM_IDT_ENTRIES: usize = 256;
 
 static mut IDT: InterruptDescriptorTable = InterruptDescriptorTable::empty();
 
-#[repr(C)]
-pub struct IntStackFrame {
-    rflags: u64,
-    cs: u64,
-    rip: u64,
-}
-
 #[repr(align(8), C)]
 pub struct InterruptDescriptorTable {
-    entries: [Descriptor64; NUM_IDT_ENTRIES],
+    entries: [arch::DescriptorType; NUM_IDT_ENTRIES],
 }
 
 pub unsafe trait IntHandlerFunc {
     fn addr(&self) -> usize;
 }
 
-pub type IntFunc = extern "x86-interrupt" fn(info: IntStackFrame);
-pub type IntFuncErrCode = extern "x86-interrupt" fn(info: IntStackFrame, err_code: u64);
-pub type HandlerFunc = extern "C" fn();
+pub type IntFunc = extern "x86-interrupt" fn(info: arch::IntStackFrame);
+pub type IntFuncErrCode =
+    extern "x86-interrupt" fn(info: arch::IntStackFrame, err_code: arch::InnerType);
 
 unsafe impl IntHandlerFunc for IntFunc {
     fn addr(&self) -> usize {
@@ -54,40 +102,15 @@ unsafe impl IntHandlerFunc for IntFuncErrCode {
     }
 }
 
-unsafe impl IntHandlerFunc for HandlerFunc {
-    fn addr(&self) -> usize {
-        *self as usize
-    }
-}
-
 impl InterruptDescriptorTable {
-    pub const fn empty() -> InterruptDescriptorTable {
+    pub const fn empty() -> Self {
         InterruptDescriptorTable {
-            entries: [Descriptor64::NULL; NUM_IDT_ENTRIES],
+            entries: [arch::DescriptorType::NULL; NUM_IDT_ENTRIES],
         }
     }
 
-    pub fn set_trap_handler<T: IntHandlerFunc>(&mut self, idx: u8, func: T) {
-        let code_sel = SegmentSelector::new(1, Ring::Ring0);
-        self.entries[idx as usize] =
-            DescriptorBuilder::trap_gate_descriptor(code_sel, func.addr() as u64)
-                .present()
-                .dpl(Ring::Ring0)
-                .finish();
-    }
-
-    pub fn set_interrupt_handler<T: IntHandlerFunc>(&mut self, idx: u8, func: T) {
-        let code_sel = SegmentSelector::new(1, Ring::Ring0);
-
-        self.entries[idx as usize] =
-            DescriptorBuilder::interrupt_descriptor(code_sel, func.addr() as u64)
-                .present()
-                .dpl(Ring::Ring0)
-                .finish();
-    }
-
     pub fn remove_entry(&mut self, idx: u8) {
-        self.entries[idx as usize] = Descriptor64::NULL;
+        self.entries[idx as usize] = arch::DescriptorType::NULL;
     }
 
     /// # Safety
@@ -97,6 +120,26 @@ impl InterruptDescriptorTable {
         unsafe {
             lidt(&ptr);
         }
+    }
+
+    pub fn set_trap_handler<T: IntHandlerFunc>(&mut self, idx: u8, func: T) {
+        let code_sel = SegmentSelector::new(1, Ring::Ring0);
+
+        self.entries[idx as usize] =
+            DescriptorBuilder::trap_gate_descriptor(code_sel, func.addr() as arch::InnerType)
+                .present()
+                .dpl(Ring::Ring0)
+                .finish();
+    }
+
+    pub fn set_interrupt_handler<T: IntHandlerFunc>(&mut self, idx: u8, func: T) {
+        let code_sel = SegmentSelector::new(1, Ring::Ring0);
+
+        self.entries[idx as usize] =
+            DescriptorBuilder::interrupt_descriptor(code_sel, func.addr() as arch::InnerType)
+                .present()
+                .dpl(Ring::Ring0)
+                .finish();
     }
 }
 
@@ -116,21 +159,27 @@ pub fn init() {
     }
 }
 
-extern "x86-interrupt" fn divide_by_zero_handler(_frame: IntStackFrame) {
+extern "x86-interrupt" fn divide_by_zero_handler(_frame: arch::IntStackFrame) {
     panic!("divide by zero");
 }
 
-extern "x86-interrupt" fn general_protection_fault_handler(frame: IntStackFrame, err_code: u64) {
+extern "x86-interrupt" fn general_protection_fault_handler(
+    frame: arch::IntStackFrame,
+    err_code: arch::InnerType,
+) {
     info!("error: {:#x}", err_code);
-    info!("instr: {:#x}", frame.rip);
+    info!("instr: {:#x}", frame.instruction_pointer());
     panic!("gerneral protection fault");
 }
 
-extern "x86-interrupt" fn invalid_opcode_handler(_frame: IntStackFrame) {
+extern "x86-interrupt" fn invalid_opcode_handler(_frame: arch::IntStackFrame) {
     panic!("invalid opcode");
 }
 
-extern "x86-interrupt" fn double_fault_handler(_frame: IntStackFrame, _err_code: u64) {
+extern "x86-interrupt" fn double_fault_handler(
+    _frame: arch::IntStackFrame,
+    _err_code: arch::InnerType,
+) {
     // if we are here, there is something seriously wrong, so its probably not a good idea to call panic
     // so we instead do a hardcoded message with outb to port 0x3F8 (COM1)
     // The message consist of following bytes:

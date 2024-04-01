@@ -1,4 +1,3 @@
-pub mod idt;
 pub mod mmap;
 pub mod paging;
 

@@ -20,9 +20,9 @@ mod heap;
 mod idt;
 mod initrd;
 mod kernel_image;
+mod mmap;
 mod multiboot2;
 mod vga;
-mod mmap;
 
 use core::{arch::asm, panic::PanicInfo, sync::atomic::Ordering};
 
@@ -107,7 +107,6 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
         info!("{:p}..{:p}: {:?}", entry.start, entry.end, entry.kind);
     }
 
-    
     // Initialize some global variables that the ap initialization
     // code will use to set up the stacks for each core.
     acpi::init_kernel_stack_vars(

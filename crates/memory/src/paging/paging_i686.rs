@@ -1,6 +1,9 @@
+use core::marker::PhantomData;
+
+use bitflags::bitflags;
 use zeroize::Zeroize;
 
-use crate::{AccessFlags, Page, FRAME_SIZE, PAGE_TABLE_ENTRIES};
+use crate::{AccessFlags, Page, PhysAddr, PAGE_TABLE_ENTRIES};
 
 #[repr(u8)]
 #[derive(Debug, Clone, Copy)]
@@ -122,10 +125,6 @@ impl Entry {
 
         if access.contains(AccessFlags::WRITE) {
             flags.insert(EntryFlags::WRITABLE);
-        }
-
-        if !access.contains(AccessFlags::EXEC) {
-            flags.insert(EntryFlags::NO_EXECUTE);
         }
 
         let mut entry = Entry(0);

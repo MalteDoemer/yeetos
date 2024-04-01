@@ -20,6 +20,7 @@ mod arch {
     pub type DescriptorType = Descriptor;
     pub type InnerType = u32;
 
+    #[derive(Debug)]
     #[repr(C)]
     pub struct IntStackFrame {
         eflags: u32,
@@ -168,7 +169,8 @@ extern "x86-interrupt" fn general_protection_fault_handler(
     err_code: arch::InnerType,
 ) {
     info!("error: {:#x}", err_code);
-    info!("instr: {:#x}", frame.instruction_pointer());
+    info!("stack_frame: {:?}", frame);
+    // info!("instr: {:#x}", frame.instruction_pointer());
     panic!("gerneral protection fault");
 }
 

@@ -2,9 +2,10 @@ TOP_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 OUT_DIR=$(TOP_DIR)out
 
 # configuration
-ARCH=x86_64
+ARCH=i686
 CONFIG=debug
 LOADER=multiboot2
+QEMU_EXE=qemu-system-i386
 
 # qemu options
 MEMORY=6G
@@ -58,14 +59,14 @@ disassemble-loader:
 
 
 qemu: $(ISO)
-	@qemu-system-x86_64 -smp cpus=$(CORES) --accel kvm -m $(MEMORY) -cdrom $(ISO) -serial stdio 
+	@$(QEMU_EXE) -smp cpus=$(CORES) --accel kvm -m $(MEMORY) -cdrom $(ISO) -serial stdio 
 
 qemu-no-kvm: $(ISO)
-	@qemu-system-x86_64 -smp cpus=$(CORES) -m $(MEMORY) -cdrom $(ISO) -serial stdio 
+	@$(QEMU_EXE) -smp cpus=$(CORES) -m $(MEMORY) -cdrom $(ISO) -serial stdio 
 
 
 qemu-debug: $(ISO)
-	@qemu-system-x86_64 -d cpu_reset -S -gdb tcp::9000 -smp cpus=$(CORES) -m $(MEMORY)  -cdrom $(ISO) -serial stdio 
+	@$(QEMU_EXE) -d cpu_reset -S -gdb tcp::9000 -smp cpus=$(CORES) -m $(MEMORY)  -cdrom $(ISO) -serial stdio 
 
 .PHONY: qemu qemu-no-kvm qemu-debug clean clean-all  dump-kernel
 

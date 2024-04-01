@@ -24,8 +24,6 @@ static mut IDT: InterruptDescriptorTable = InterruptDescriptorTable::empty();
 
 #[repr(C)]
 pub struct IntStackFrame {
-    ss: u64,
-    rsp: u64,
     rflags: u64,
     cs: u64,
     rip: u64,

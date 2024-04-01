@@ -1,5 +1,6 @@
 {
     "debug.allowBreakpointsEverywhere": true,
-    "rust-analyzer.cargo.target": "triplets/x86_64-yeetos.json",
-    "rust-analyzer.checkOnSave.allTargets": false
+    "rust-analyzer.cargo.target": "triplets/i686-yeetos.json",
+    "rust-analyzer.checkOnSave.allTargets": false,
+    "rust-analyzer.showUnlinkedFileNotification": false
 }

@@ -1,4 +1,3 @@
-pub mod mmap;
 pub mod paging;
 
 use core::arch::global_asm;

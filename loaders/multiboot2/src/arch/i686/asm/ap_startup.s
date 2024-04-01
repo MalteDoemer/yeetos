@@ -5,8 +5,9 @@
 // address to 0x8000.
 .global copy_ap_trampoline
 copy_ap_trampoline:
-    hlt
-    jmp copy_ap_trampoline
+    ret
+    // hlt
+    // jmp copy_ap_trampoline
 
 
 // Starts an application processor.
@@ -15,5 +16,6 @@ copy_ap_trampoline:
 // - ?? id of the ap to start
 .global startup_ap
 startup_ap:
-    hlt
-    jmp startup_ap
+    ret
+    // hlt
+    // jmp startup_ap

@@ -95,6 +95,10 @@ reload_cs:
 multiboot2_error:
     movl $multiboot2_error_msg, %esi
     jmp display_error
+    
+cpuid_error:
+    movl $cpuid_error_msg, %esi
+    jmp display_error
 
 // Arguments:
 //      %esi: pointer to the message (null-terminated) 

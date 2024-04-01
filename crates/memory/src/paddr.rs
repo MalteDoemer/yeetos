@@ -289,8 +289,16 @@ impl fmt::UpperHex for PhysAddr {
     }
 }
 
+#[cfg(target_pointer_width = "64")]
 impl fmt::Pointer for PhysAddr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:#018x}", self.0)
+    }
+}
+
+#[cfg(target_pointer_width = "32")]
+impl fmt::Pointer for PhysAddr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:#010x}", self.0)
     }
 }

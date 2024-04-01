@@ -22,6 +22,7 @@ mod initrd;
 mod kernel_image;
 mod multiboot2;
 mod vga;
+mod mmap;
 
 use core::{arch::asm, panic::PanicInfo, sync::atomic::Ordering};
 
@@ -96,7 +97,7 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
     let kernel_image_info = kernel_image.get_kernel_image_info();
 
     // Create the physical memory map
-    let memory_map = arch::mmap::create_memory_map(
+    let memory_map = mmap::create_memory_map(
         &mboot_info,
         initrd.end_addr().to_phys(),
         kernel_image_info.end().to_phys(),
@@ -106,12 +107,15 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
         info!("{:p}..{:p}: {:?}", entry.start, entry.end, entry.kind);
     }
 
+    
     // Initialize some global variables that the ap initialization
     // code will use to set up the stacks for each core.
     acpi::init_kernel_stack_vars(
         kernel_image_info.stack.start().to_addr(),
         kernel_image.get_kernel_stack_size(),
     );
+
+    // panic!("finished");
 
     // Startup the Application Processors
     acpi::startup_aps(&acpi_tables);

@@ -3,6 +3,99 @@ use memory::{MemoryMapEntry, MemoryMapEntryKind, PhysAddr};
 
 use crate::multiboot2::{MemoryRegion, Multiboot2Info};
 
+#[cfg(target_arch = "x86")]
+mod arch {
+    use alloc::vec::Vec;
+    use memory::{MemoryMapEntry, MemoryMapEntryKind};
+
+    use crate::multiboot2;
+
+    pub type AddrType = u32;
+
+    pub fn translate_memory_regions(
+        mem_regions: &[multiboot2::MemoryRegion],
+    ) -> Vec<MemoryMapEntry> {
+        // since we only support 32-bit physical addresses (no PAE)
+        // we have to ignore all memory above 0xFFFFFFFF
+
+        // let regions = mem_regions.iter().filter(|region| region.)
+
+        let mut memory_map = Vec::new();
+        for region in mem_regions {
+            if region.base_addr <= core::u32::MAX as u64 {
+                memory_map.push(convert_region_to_entry(*region));
+            } else {
+                // ignored
+            }
+
+            // memory_map.push(convert_region_to_entry(*region));
+        }
+
+        memory_map
+    }
+
+    fn convert_region_to_entry(region: multiboot2::MemoryRegion) -> MemoryMapEntry {
+        let kind = match region.region_type {
+            1 => MemoryMapEntryKind::Free,
+            3 => MemoryMapEntryKind::Reserved, // Usable ACPI Information
+            4 => MemoryMapEntryKind::Reserved, // Reserved but preserve on hibernation
+            5 => MemoryMapEntryKind::Unusable,
+            _ => MemoryMapEntryKind::Reserved,
+        };
+
+        if region.base_addr + region.length <= core::u32::MAX as u64 {
+            let start = (region.base_addr as u32).into();
+            let end = start + region.length as u32;
+
+            MemoryMapEntry::new(start, end, kind)
+        } else {
+            // now we have a memory map entry that starts below u32::MAX
+            // and ends above u32::MAX so we have to split it at u32::MAX
+
+            let start = (region.base_addr as u32).into();
+            let end = u32::MAX.into();
+
+            MemoryMapEntry::new(start, end, kind)
+        }
+    }
+}
+
+#[cfg(target_arch = "x86_64")]
+mod arch {
+    use alloc::vec::Vec;
+
+    use crate::multiboot2;
+    use memory::{MemoryMapEntry, MemoryMapEntryKind};
+
+    pub type AddrType = u64;
+
+    pub fn translate_memory_regions(
+        mem_regions: &[multiboot2::MemoryRegion],
+    ) -> Vec<MemoryMapEntry> {
+        let mut memory_map = Vec::new();
+        for region in mem_regions {
+            memory_map.push(convert_region_to_entry(*region));
+        }
+
+        memory_map
+    }
+
+    fn convert_region_to_entry(region: multiboot2::MemoryRegion) -> MemoryMapEntry {
+        let kind = match region.region_type {
+            1 => MemoryMapEntryKind::Free,
+            3 => MemoryMapEntryKind::Reserved, // Usable ACPI Information
+            4 => MemoryMapEntryKind::Reserved, // Reserved but preserve on hibernation
+            5 => MemoryMapEntryKind::Unusable,
+            _ => MemoryMapEntryKind::Reserved,
+        };
+
+        let start = region.base_addr.into();
+        let end = start + region.length;
+
+        MemoryMapEntry::new(start, end, kind)
+    }
+}
+
 pub struct MemoryMapAddresses {
     initrd_end_addr: PhysAddr,
     kernel_end_addr: PhysAddr,
@@ -13,8 +106,6 @@ pub fn create_memory_map(
     initrd_end_addr: PhysAddr,
     kernel_end_addr: PhysAddr,
 ) -> Vec<MemoryMapEntry> {
-    verify_memory_regions(&mboot.memory_regions);
-
     let page_tables = get_page_tables_entry();
     let loader = get_loader_entry();
     let boot_info = get_boot_info_entry(initrd_end_addr);
@@ -24,11 +115,8 @@ pub fn create_memory_map(
 
     let hardcoded_entries = [page_tables, loader, boot_info, kernel_image];
 
-    // Note: this assumes that `&mboot.memory_regions` is in ascending order.
-    let mut memory_map = Vec::new();
-    for region in &mboot.memory_regions {
-        memory_map.push(convert_region_to_entry(*region));
-    }
+    verify_memory_regions(&mboot.memory_regions);
+    let mut memory_map = arch::translate_memory_regions(&mboot.memory_regions);
 
     for entry in hardcoded_entries {
         let start_idx = find_mmap_entry_containing(entry.start, &memory_map)
@@ -81,21 +169,6 @@ fn split_mmap_entry(
     let post = MemoryMapEntry::new(small.end, big.end, big.kind);
 
     (pre, small, post)
-}
-
-fn convert_region_to_entry(region: MemoryRegion) -> MemoryMapEntry {
-    let kind = match region.region_type {
-        1 => MemoryMapEntryKind::Free,
-        3 => MemoryMapEntryKind::Reserved, // Usable ACPI Information
-        4 => MemoryMapEntryKind::Reserved, // Reserved but preserve on hibernation
-        5 => MemoryMapEntryKind::Unusable,
-        _ => MemoryMapEntryKind::Reserved,
-    };
-
-    let start = region.base_addr.into();
-    let end = start + region.length;
-
-    MemoryMapEntry::new(start, end, kind)
 }
 
 fn find_mmap_entry_containing(addr: PhysAddr, entries: &[MemoryMapEntry]) -> Option<usize> {
@@ -152,11 +225,11 @@ fn verify_memory_regions(mem_regions: &[MemoryRegion]) {
         panic!("no memory regions from multiboot2");
     }
 
-    let mut prev_addr = PhysAddr::zero();
+    let mut prev_addr = 0;
     let mut prev_size = 0;
 
     for region in mem_regions {
-        let base_addr = region.base_addr.into();
+        let base_addr = region.base_addr;
 
         if prev_addr + prev_size > base_addr {
             panic!("memory regions from multiboot2 are not in ascending order or overlapping");
@@ -188,8 +261,8 @@ fn get_loader_entry() -> MemoryMapEntry {
 
     // Note:
     // physical address = virtual address
-    let loader_start = __load_start as u64;
-    let loader_end = __boot_info_start as u64;
+    let loader_start = __load_start as arch::AddrType;
+    let loader_end = __boot_info_start as arch::AddrType;
 
     MemoryMapEntry {
         start: PhysAddr::new(loader_start),
@@ -206,7 +279,7 @@ fn get_boot_info_entry(initrd_end_addr: PhysAddr) -> MemoryMapEntry {
 
     // Note:
     // physical address = virtual address
-    let boot_info_start = __boot_info_start as u64;
+    let boot_info_start = __boot_info_start as arch::AddrType;
 
     MemoryMapEntry {
         start: PhysAddr::new(boot_info_start),

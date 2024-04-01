@@ -47,6 +47,7 @@ impl<'a> KernelImage<'a> {
                 .collect(),
         )?;
 
+        // Note: cast is still correct on 32-bit platforms
         let entry_point = elf_image.ehdr.e_entry as usize;
 
         Ok(KernelImage {
@@ -144,6 +145,8 @@ impl<'a> KernelImage<'a> {
         segment: VirtualRange,
     ) -> Result<(), KernelImageError> {
         let zero_start = segment.start().to_addr();
+
+        // Note: casts are still valid on 32-bit platforms
         let load_start = load_base + program_header.p_vaddr as usize;
         let load_end = load_start + program_header.p_filesz as usize;
         let zero_end = segment.end().to_addr();
@@ -195,7 +198,8 @@ impl<'a> KernelImage<'a> {
     }
 
     fn get_kernel_segment(load_base: VirtAddr, phdr: ProgramHeader) -> VirtualRange {
-        // Note: p_vaddr is configured to be relative to address 0x00 at compile time
+        // Note1: p_vaddr is configured to be relative to address 0x00 at compile time
+        // Note2: casts are still valid on 32-bit platforms
         let load_addr = load_base + phdr.p_vaddr as usize;
         let load_end = load_addr + phdr.p_memsz as usize;
 

@@ -31,8 +31,8 @@ static mut TSC_NS_FACTOR: u64 = 0;
 
 fn rdtsc() -> u64 {
     unsafe {
-        let lower: u64;
-        let higher: u64;
+        let lower: u32;
+        let higher: u32;
         asm!(
             "lfence",
             "rdtsc",
@@ -40,7 +40,7 @@ fn rdtsc() -> u64 {
             out("eax") lower,
         );
 
-        higher << 32 | lower
+        (higher as u64) << 32 | (lower as u64)
     }
 }
 

@@ -2,7 +2,7 @@ use core::ptr::NonNull;
 
 use acpi::{AcpiHandler, PhysicalMapping};
 
-const HIGHEST_MAPPED_ADDRESS: usize = 4 * 1024 * 1024 * 1024;
+const HIGHEST_MAPPED_ADDRESS: usize = 0xFFFFFFFF;
 
 /// An implementation of the `AcpiHandler` trait needed for the acpi crate.
 ///

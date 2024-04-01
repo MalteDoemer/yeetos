@@ -13,22 +13,16 @@
 extern crate alloc;
 
 mod acpi;
+mod arch;
 mod boot_info;
 mod devices;
 mod heap;
-mod idt;
 mod initrd;
 mod kernel_image;
-mod mmap;
 mod multiboot2;
-mod paging;
 mod vga;
 
-use core::{
-    arch::{asm, global_asm},
-    panic::PanicInfo,
-    sync::atomic::Ordering,
-};
+use core::{arch::asm, panic::PanicInfo, sync::atomic::Ordering};
 
 use log::{error, info};
 use memory::{to_higher_half, VirtAddr};
@@ -41,10 +35,6 @@ use crate::{
     vga::{Color, VGAWriter},
 };
 
-global_asm!(include_str!("asm/boot.s"), options(att_syntax));
-
-global_asm!(include_str!("asm/ap_startup.s"), options(att_syntax));
-
 #[no_mangle]
 pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
     // Initialize logger
@@ -52,7 +42,7 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
     info!("intitialized boot logger...");
 
     // Initialize IDT
-    idt::init();
+    arch::idt::init();
 
     // Initialize heap
     heap::init();
@@ -103,7 +93,7 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
     let kernel_image_info = kernel_image.get_kernel_image_info();
 
     // Create the physical memory map
-    let memory_map = mmap::create_memory_map(
+    let memory_map = arch::mmap::create_memory_map(
         &mboot_info,
         initrd.end_addr().to_phys(),
         kernel_image_info.end().to_phys(),
@@ -123,11 +113,11 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
     // Startup the Application Processors
     acpi::startup_aps(&acpi_tables);
 
-    // parse elf structure and load the kernel into memory
+    // Parse elf structure and load the kernel into memory
     kernel_image.load_kernel().expect("failed to load kernel");
 
-    // enable the higher half mapping
-    paging::enable_higher_half();
+    // Enable the higher half mapping
+    arch::paging::enable_higher_half();
 
     let entry_point = to_higher_half(kernel_image.get_kernel_entry_point());
     info!("kernel entry point: {:?}", entry_point);
@@ -137,13 +127,13 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
         acpi::AP_COUNT.load(Ordering::SeqCst) + 1
     );
 
-    // initialize the boot_info header
+    // Initialize the boot_info header
     boot_info::init_boot_info(&mboot_info, &memory_map, &initrd, &kernel_image_info);
 
-    // this releases all started AP's to enter the kernel
+    // This releases all started AP's to enter the kernel
     KERNEL_ENTRY.call_once(|| entry_point);
 
-    // BSP has id of 0
+    // Note: BSP has id of 0
     make_jump_to_kernel(0, entry_point);
 }
 

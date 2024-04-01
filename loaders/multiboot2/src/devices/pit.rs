@@ -2,7 +2,7 @@ use core::sync::atomic::{AtomicU32, Ordering};
 
 use x86::io::outb;
 
-use crate::idt::IntStackFrame;
+use crate::arch::idt::IntStackFrame;
 
 use super::io_delay;
 

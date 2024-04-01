@@ -60,6 +60,19 @@ start:
     // save the pointer to the multiboot2 struct on the stack
     push %ebx
 
+    // check for cpuid availability with the eflags method
+    pushfd                              // save EFLAGS so we can restore them laters
+    pushfd                              // store EFLAGS on the stack for manipulation
+    xorl $0x00200000, (%esp)            // invert the ID bit
+    popfd                               // load EFLAGS with ID bit inverted
+    pushfd                              // store EFLAGS on the stack again
+    pop %eax                            // move the EFLAGS into eax
+    xorl (%esp), %eax                   // test is any bits have changed
+    popfd                               // restore the original EFLAGS
+    and $0x00200000, %eax               // eax = zero if ID bit can't be changed, else non-zero
+
+    jz cpuid_error                      // if eax = zero then cpuid is not supported
+
     // load gdt
     lgdtl gdt32_ptr
 
@@ -114,6 +127,9 @@ jmp_kernel_entry:
 
 multiboot2_error_msg:
     .asciz "boot failed: not loaded from multiboot2 compliant loader (signature missmatch)!"
+
+cpuid_error_msg:
+    .asciz "boot failed: cpuid instruction not available!"
 
 .align 8
 gdt32:

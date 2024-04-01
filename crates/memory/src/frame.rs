@@ -1,11 +1,8 @@
-use crate::{PhysAddr, FRAME_SHIFT};
-
-#[cfg(target_arch = "x86_64")]
-pub(crate) type Inner = u64;
+use crate::{paddr, PhysAddr, FRAME_SHIFT};
 
 #[repr(transparent)]
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Frame(Inner);
+pub struct Frame(paddr::Inner);
 
 impl Frame {
     /// Returns the frame which is containing `addr`.
@@ -13,7 +10,7 @@ impl Frame {
         Frame(paddr.to_inner() >> FRAME_SHIFT)
     }
 
-    pub const fn from_inner(inner: Inner) -> Self {
+    pub const fn from_inner(inner: paddr::Inner) -> Self {
         Frame(inner)
     }
 
@@ -32,25 +29,25 @@ impl Frame {
     }
 
     /// Returns the frame number of this frame.
-    pub const fn to_inner(self) -> Inner {
+    pub const fn to_inner(self) -> paddr::Inner {
         self.0
     }
 
     /// Performs unsigned subtraction: `self.0 - other.0`
-    pub const fn diff(self, other: Frame) -> Inner {
+    pub const fn diff(self, other: Frame) -> paddr::Inner {
         self.checked_diff(other).unwrap()
     }
 
     /// Performs unsigned subtraction: `self.0 - other.0`
-    pub const fn checked_diff(self, other: Frame) -> Option<Inner> {
+    pub const fn checked_diff(self, other: Frame) -> Option<paddr::Inner> {
         self.0.checked_sub(other.0)
     }
 
-    pub const fn add(self, other: Inner) -> Self {
+    pub const fn add(self, other: paddr::Inner) -> Self {
         self.checked_add(other).unwrap()
     }
 
-    pub const fn checked_add(self, other: Inner) -> Option<Self> {
+    pub const fn checked_add(self, other: paddr::Inner) -> Option<Self> {
         let res = self.0.checked_add(other);
 
         match res {

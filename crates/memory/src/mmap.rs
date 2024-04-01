@@ -1,4 +1,4 @@
-use crate::PhysAddr;
+use crate::{paddr, PhysAddr};
 
 /// Maximum number of memory map entries
 pub const MEMORY_MAP_ENTRIES: usize = 64;
@@ -51,7 +51,7 @@ impl MemoryMapEntry {
         }
     }
 
-    pub fn size(&self) -> u64 {
+    pub fn size(&self) -> paddr::Inner {
         self.end - self.start
     }
 

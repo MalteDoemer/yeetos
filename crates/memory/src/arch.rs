@@ -22,5 +22,29 @@ mod x86_64 {
     }
 }
 
+#[cfg(target_arch = "x86")]
+mod x86 {
+    use crate::VirtAddr;
+
+    /// Base address of the kernel address space
+    pub const KERNEL_BASE: usize = 0xC0000000;
+
+    /// The size in bytes of a logical page.
+    pub const PAGE_SIZE: usize = 4096;
+    pub const PAGE_SHIFT: usize = 12;
+
+    /// The size in bytes of a physical page frame.
+    pub const FRAME_SIZE: u32 = 4096;
+    pub const FRAME_SHIFT: u32 = 12;
+
+    /// Adds a fixed offset of `KERNEL_BASE` to the address.
+    pub fn to_higher_half(addr: VirtAddr) -> VirtAddr {
+        addr + KERNEL_BASE
+    }
+}
+
 #[cfg(target_arch = "x86_64")]
 pub use x86_64::*;
+
+#[cfg(target_arch = "x86")]
+pub use x86::*;

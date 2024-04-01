@@ -1,11 +1,11 @@
 use core::ops::Range;
 
-use crate::{frame, Frame};
+use crate::{paddr, Frame};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PhysicalRange {
     start: Frame,
-    num_frames: frame::Inner,
+    num_frames: paddr::Inner,
 }
 
 impl PhysicalRange {
@@ -13,14 +13,14 @@ impl PhysicalRange {
     ///
     /// # Panics
     /// If `start + num_frames` overflows.
-    pub const fn new(start: Frame, num_frames: frame::Inner) -> Self {
+    pub const fn new(start: Frame, num_frames: paddr::Inner) -> Self {
         Self::checked_new(start, num_frames).unwrap()
     }
 
     /// Creates a new `PhysicalRange`.
     ///
     /// Returns `None` if `start + num_frames` overflows.
-    pub const fn checked_new(start: Frame, num_frames: frame::Inner) -> Option<Self> {
+    pub const fn checked_new(start: Frame, num_frames: paddr::Inner) -> Option<Self> {
         let rng = PhysicalRange { start, num_frames };
 
         if rng.overflows() {
@@ -50,7 +50,7 @@ impl PhysicalRange {
         self.start
     }
 
-    pub const fn num_frames(&self) -> frame::Inner {
+    pub const fn num_frames(&self) -> paddr::Inner {
         self.num_frames
     }
 

@@ -13,7 +13,10 @@ impl fmt::Debug for TryFromVirtAddrError {
 }
 
 #[cfg(target_arch = "x86_64")]
-type Inner = u64;
+pub type Inner = u64;
+
+#[cfg(target_arch = "x86")]
+pub type Inner = u32;
 
 #[repr(transparent)]
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]

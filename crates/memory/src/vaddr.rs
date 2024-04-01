@@ -46,7 +46,7 @@ impl VirtAddr {
     }
 
     /// Aligns the address up to `PAGE_SIZE`.
-    /// 
+    ///
     /// ### Panics
     /// based on the `overflow-checks` setting
     pub fn page_align_up(self) -> Self {
@@ -55,7 +55,7 @@ impl VirtAddr {
     }
 
     /// Aligns the address up to `PAGE_SIZE`.
-    /// 
+    ///
     /// Returns `None` if the operation would overflow.
     pub fn page_align_up_checked(self) -> Option<Self> {
         let addr = self.0.checked_next_multiple_of(PAGE_SIZE)?;
@@ -288,9 +288,16 @@ impl fmt::UpperHex for VirtAddr {
     }
 }
 
+#[cfg(target_pointer_width = "64")]
 impl fmt::Pointer for VirtAddr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        #[cfg(target_pointer_width = "64")]
         write!(f, "{:#018x}", self.0)
+    }
+}
+
+#[cfg(target_pointer_width = "32")]
+impl fmt::Pointer for VirtAddr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:#010x}", self.0)
     }
 }

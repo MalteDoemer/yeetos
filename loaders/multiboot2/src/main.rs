@@ -31,7 +31,7 @@ use memory::{to_higher_half, VirtAddr};
 use multiboot2::Multiboot2Info;
 
 use crate::{
-    acpi::{make_jump_to_kernel, KERNEL_ENTRY},
+    acpi::{make_jump_to_kernel, BSP_DONE},
     initrd::Initrd,
     kernel_image::KernelImage,
     vga::{Color, VGAWriter},
@@ -121,7 +121,7 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
     // Enable the higher half mapping
     // Note: after this access to some addresses is no longer possible
     // This means functions such as startup_aps() and get_acpi_tables() must be called before
-    arch::paging::enable_higher_half();
+    arch::paging::init();
 
     let entry_point = to_higher_half(kernel_image.get_kernel_entry_point());
     info!("kernel entry point: {:?}", entry_point);
@@ -135,14 +135,19 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
     boot_info::init_boot_info(&mboot_info, &memory_map, &initrd, &kernel_image_info);
 
     // This releases all started AP's to enter the kernel
-    KERNEL_ENTRY.call_once(|| entry_point);
 
-    panic!("done");
+    BSP_DONE.store(true, Ordering::SeqCst);
+
+    // KERNEL_ENTRY.store(entry_point.to_inner(), Ordering::SeqCst);
+    // KERNEL_ENTRY.call_once(|| entry_point);
+
+    devices::tsc::busy_sleep_ms(1000);
+
+    panic!("bsp done!");
 
     // Note: BSP has id of 0
     // make_jump_to_kernel(0, entry_point);
 }
-
 
 #[no_mangle]
 pub extern "C" fn test_function(val: usize) -> usize {

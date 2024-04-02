@@ -40,7 +40,13 @@ fn get_page_directory() -> PageDirectoryGuard<'static> {
     PageDirectoryGuard { table, guard }
 }
 
-pub fn enable_higher_half() {
+pub fn init_ap() {
+    unsafe {
+        enable_paging();
+    }
+}
+
+pub fn init() {
     unsafe {
         enable_paging();
     }

@@ -110,8 +110,8 @@ reload_cs:
     movw %ax, %fs
     movw %ax, %gs
 
-
-    // identity map the first 1GiB using 4MiB pages
+    // prepare to identity map the first 1GiB using 4MiB pages
+    // paging is only enabled once enable_paging() is called from within rust
 
     // first clear out the Page Directory and Zero Frame
     xorl %eax, %eax                                 // zero out eax
@@ -217,7 +217,8 @@ jmp_kernel_entry:
     pushl %ebx              // second argument to kernel_main() is the processor id
     pushl %eax              // first argument to kernel_main() is the boot info pointer
 
-    jmpl *%ecx              // jump to kernel (no return)
+    call *%ecx              // jump to kernel (doesn't return)
+    ud2
 
 .section .rodata
 
@@ -229,6 +230,9 @@ cpuid_error_msg:
 
 pse_error_msg:
     .asciz "boot failed: PSE (page size extension) not available!"
+
+.global gdt32
+.global gdt32_ptr
 
 .align 8
 gdt32:

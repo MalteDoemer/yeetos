@@ -1,17 +1,22 @@
-use core::sync::atomic::{AtomicUsize, Ordering};
+use core::{
+    arch::asm,
+    sync::atomic::{AtomicBool, AtomicUsize, Ordering},
+};
 
 use acpi::AcpiTables;
 use log::info;
 use memory::{to_higher_half, VirtAddr};
 use spin::Once;
 
-use crate::boot_info;
+use crate::{arch::paging, boot_info, devices, idt};
 
 use super::acpi_handler::IdentityMapAcpiHandler;
 
 pub static AP_COUNT: AtomicUsize = AtomicUsize::new(0);
 
-pub static KERNEL_ENTRY: Once<VirtAddr> = Once::new();
+// pub static KERNEL_ENTRY: Once<VirtAddr> = Once::new();
+// pub static KERNEL_ENTRY: AtomicUsize = AtomicUsize::new(0);
+pub static BSP_DONE: AtomicBool = AtomicBool::new(false);
 
 #[no_mangle]
 pub static KERNEL_STACKS_VADDR: AtomicUsize = AtomicUsize::new(0);
@@ -76,14 +81,71 @@ pub fn startup_aps(acpi_tables: &AcpiTables<IdentityMapAcpiHandler>) {
 
 #[no_mangle]
 pub extern "C" fn rust_entry_ap(ap_id: usize) -> ! {
+    let ns = devices::tsc::now_ns() / 1000;
+
     AP_COUNT.fetch_add(1, Ordering::SeqCst);
 
-    info!("AP {} started", ap_id);
+    info!("AP {}: started at {}", ap_id, ns);
 
-    // this waits until the BSP is finished initializing
-    let entry_point = KERNEL_ENTRY.wait();
+    // initialize paging for this AP
+    paging::init_ap();
 
-    make_jump_to_kernel(ap_id, *entry_point);
+    // load IDT for this core
+    idt::init_ap();
+
+    info!("AP {}: now idt and paging enabled ...", ap_id);
+
+    // devices::tsc::busy_sleep_ms(100);
+
+    panic!("ap panic");
+
+    // unsafe {
+    //     asm!("ud2");
+    // }
+
+    // loop {}
+
+    // loop {
+    // core::hint::spin_loop();
+
+    // let val = BSP_DONE.load(Ordering::SeqCst);
+
+    // if val {
+    //     break;
+    // }
+    // }
+
+    // info!("AP {}: bsp done at {}", ap_id, devices::tsc::now_ns() / 1000);
+
+    // let mut entry = 0;
+
+    // while entry == 0 {
+    //     entry = KERNEL_ENTRY.load(Ordering::SeqCst);
+    //     core::hint::spin_loop()
+    // }
+
+    // info!("got entry point for ap={}: {:#x}", ap_id, entry);
+
+    // loop {
+    //     unsafe {
+    //         asm!("hlt");
+    //     }
+    // }
+
+    // let entry = KERNEL_ENTRY.wait();
+
+    // loop {
+    //     let test = KERNEL_ENTRY.poll();
+
+    //     if test.is_some() {
+    //         break;
+    //     }
+    // }
+
+    // // this waits until the BSP is finished initializing
+    // let entry_point = KERNEL_ENTRY.wait();
+
+    // make_jump_to_kernel(ap_id, *entry_point);
 }
 
 pub fn make_jump_to_kernel(processor_id: usize, entry_point_addr: VirtAddr) -> ! {

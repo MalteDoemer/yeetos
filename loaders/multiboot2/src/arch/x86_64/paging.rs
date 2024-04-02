@@ -42,8 +42,12 @@ pub fn get_page_map_level_four() -> PageMapLevelFourGuard<'static> {
     PageMapLevelFourGuard { table, guard }
 }
 
+pub fn init_ap() {
+    // Note: nothing to do here, all initialization is done in ap_startup.s
+}
+
 /// Enable the higher half mapping.
-pub fn enable_higher_half() {
+pub fn init() {
     let mut p4 = get_page_map_level_four();
     let pml4t_high_index = (KERNEL_BASE >> 39) & 0x1FF;
     p4[pml4t_high_index] = p4[0];

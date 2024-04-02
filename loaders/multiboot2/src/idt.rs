@@ -50,6 +50,7 @@ mod arch {
     pub type DescriptorType = Descriptor64;
     pub type InnerType = u64;
 
+    #[derive(Debug)]
     #[repr(C)]
     pub struct IntStackFrame {
         rflags: u64,
@@ -156,6 +157,12 @@ pub fn init() {
             general_protection_fault_handler,
         );
         IDT.set_interrupt_handler::<IntFunc>(pic::PRIMARY_VECTOR_OFFSET + 0x00, pit::pit_interrupt);
+        IDT.load();
+    }
+}
+
+pub fn init_ap() {
+    unsafe {
         IDT.load();
     }
 }

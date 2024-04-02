@@ -21,7 +21,9 @@ pub static KERNEL_STACK_SIZE: AtomicUsize = AtomicUsize::new(0);
 
 extern "C" {
     fn copy_ap_trampoline();
-    fn startup_ap(lapic_base: u64, ap_id: u64);
+
+    fn startup_ap(lapic_base: usize, ap_id: usize);
+
     fn jmp_kernel_entry(
         boot_info_ptr: usize,
         processor_id: usize,
@@ -58,9 +60,16 @@ pub fn startup_aps(acpi_tables: &AcpiTables<IdentityMapAcpiHandler>) {
         copy_ap_trampoline();
     }
 
+    let addr = apic
+        .local_apic_address
+        .try_into()
+        .expect("local apic address to large");
+
     for proc in processor_info.application_processors.iter() {
+        let apic_id = proc.local_apic_id.try_into().unwrap();
+
         unsafe {
-            startup_ap(apic.local_apic_address, proc.local_apic_id.into());
+            startup_ap(addr, apic_id);
         }
     }
 }

@@ -52,8 +52,6 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
     // Initialize PIC, PIT and TSC
     devices::init();
 
-    // panic!("test");
-
     // Safety:
     // mboot_ptr is passed by boot.s and assumend to be correct.
     let mboot_info = unsafe { Multiboot2Info::new(VirtAddr::new(mboot_ptr)) };
@@ -114,8 +112,6 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
         kernel_image.get_kernel_stack_size(),
     );
 
-    // panic!("finished");
-
     // Startup the Application Processors
     acpi::startup_aps(&acpi_tables);
 
@@ -123,6 +119,8 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
     kernel_image.load_kernel().expect("failed to load kernel");
 
     // Enable the higher half mapping
+    // Note: after this access to some addresses is no longer possible
+    // This means functions such as startup_aps() and get_acpi_tables() must be called before
     arch::paging::enable_higher_half();
 
     let entry_point = to_higher_half(kernel_image.get_kernel_entry_point());
@@ -139,8 +137,16 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
     // This releases all started AP's to enter the kernel
     KERNEL_ENTRY.call_once(|| entry_point);
 
+    panic!("done");
+
     // Note: BSP has id of 0
-    make_jump_to_kernel(0, entry_point);
+    // make_jump_to_kernel(0, entry_point);
+}
+
+
+#[no_mangle]
+pub extern "C" fn test_function(val: usize) -> usize {
+    val
 }
 
 #[panic_handler]

@@ -49,6 +49,85 @@ copy_ap_trampoline:
 
 
 
+// This function selects the correct ap by writing into register 0x310
+// Parameters: 
+// - %edi = local apic address
+// - %esi = apic id shifted left by 24
+select_ap:
+    // select ap by writing 0x310
+    movl 0x310(%edi), %eax
+    andl $0x00ffffff, %eax
+    orl %esi, %eax
+    movl %eax, 0x310(%edi)
+
+    ret
+
+// This function waits until bit 12 of register 0x300 is cleared.
+// Parameters: 
+// - %edi = local apic address
+// - %esi = apic id shifted left by 24
+wait_for_delivery:
+    pause
+    movl 0x300(%edi), %eax
+    andl $(1 << 12), %eax
+    testl %eax, %eax
+    jnz wait_for_delivery
+
+    ret
+
+// This function sends an INIT IPI followed by an INIT IPI deassert.
+// Parameters: 
+// - %edi = local apic address
+// - %esi = apic id shifted left by 24
+send_init_ipi:
+    /* send INIT IPI */
+
+    // clear APIC error register
+    movl $0, 0x280(%edi) 
+
+    call select_ap
+
+    // trigger INIT IPI by writing to register 0x300
+    movl 0x300(%edi), %eax
+    andl $0xfff00000, %eax
+    orl $0x00C500, %eax
+    movl %eax, 0x300(%edi)
+
+    call wait_for_delivery
+
+    /* deassert INIT IPI */
+
+    call select_ap
+
+    // send INIT IPI deassert signal
+    movl 0x300(%edi), %eax
+    andl $0xfff00000, %eax
+    orl $0x008500, %eax
+    movl %eax, 0x300(%edi)
+
+    call wait_for_delivery
+
+    ret
+
+// This function sends a STARTUP IPI with the start address of 0800:0000.
+// Note: in contrast to send_init_ipi it does not call wait_for_delivery
+// Parameters: 
+// - %edi = local apic address
+// - %esi = apic id shifted left by 24
+send_startup_ipi:
+    // clear APIC error register
+    movl $0, 0x280(%edi) 
+
+    call select_ap
+
+    // send STARTUP IPI for vector 0800:0000
+    movl 0x300(%edi), %eax
+    andl $0xfff0f800, %eax
+    orl $0x000608, %eax
+    movl %eax, 0x300(%edi)
+
+    ret
+
 // Starts an application processor.
 // Parameters:
 // - 1: local apic address of bsp
@@ -83,55 +162,7 @@ startup_ap:
     // so we do the left shift right here and always pass the shifted value around
     shll $24, %esi
 
-
-    /* send INIT IPI */
-
-    // clear APIC error register
-    movl $0, 0x280(%edi) 
-
-    // select ap
-    movl 0x310(%edi), %eax
-    andl $0x00ffffff, %eax
-    orl %esi, %eax
-    movl %eax, 0x310(%edi)
-
-    // trigger INIT IPI by writing to register 0x300
-    movl 0x300(%edi), %eax
-    andl $0xfff00000, %eax
-    orl $0x00C500, %eax
-    movl %eax, 0x300(%edi)
-
-    // wait until bit 12 of 0x300 is cleard
-2:
-    pause
-    movl 0x300(%edi), %eax
-    andl $(1 << 12), %eax
-    testl %eax, %eax
-    jnz 2b
-
-
-    /* deassert INIT IPI */
-
-    // select ap
-    movl 0x310(%edi), %eax
-    andl $0x00ffffff, %eax
-    orl %esi, %eax
-    movl %eax, 0x310(%edi)
-
-    // send INIT IPI deassert signal
-    movl 0x300(%edi), %eax
-    andl $0xfff00000, %eax
-    orl $0x008500, %eax
-    movl %eax, 0x300(%edi)
-
-    // wait for delivery
-3:
-    pause
-    movl 0x300(%edi), %eax
-    andl $(1 << 12), %eax
-    testl %eax, %eax
-    jnz 3b
-
+    call send_init_ipi
 
     // sleep for 10 milliseconds
     xorl %eax, %eax
@@ -140,23 +171,7 @@ startup_ap:
     call sleep_ms
 
     /* send STARTUP IPI #1 */
-
-    // clear APIC error register
-    movl $0, 0x280(%edi) 
-
-    // select ap
-    movl 0x310(%edi), %eax
-    andl $0x00ffffff, %eax
-    orl %esi, %eax
-    movl %eax, 0x310(%edi)
-
-
-    // send STARTUP IPI for vector 0800:0000
-    movl 0x300(%edi), %eax
-    andl $0xfff0f800, %eax
-    orl $0x000608, %eax
-    movl %eax, 0x300(%edi)
-
+    call send_startup_ipi
 
     // wait for 200 microseconds
     xorl %eax, %eax
@@ -164,33 +179,10 @@ startup_ap:
     movl $200, +0(%esp)
     call sleep_us
 
-    // wait for delivery
-4:
-    pause
-    movl 0x300(%edi), %eax
-    andl $(1 << 12), %eax
-    testl %eax, %eax
-    jnz 4b
-
+    call wait_for_delivery
 
     /* send STARTUP IPI #2 */
-
-    // clear APIC error register
-    movl $0, 0x280(%edi) 
-
-    // select ap
-    movl 0x310(%edi), %eax
-    andl $0x00ffffff, %eax
-    orl %esi, %eax
-    movl %eax, 0x310(%edi)
-
-
-    // send STARTUP IPI for vector 0800:0000
-    movl 0x300(%edi), %eax
-    andl $0xfff0f800, %eax
-    orl $0x000608, %eax
-    movl %eax, 0x300(%edi)
-
+    call send_startup_ipi
 
     // wait for 200 microseconds
     xorl %eax, %eax
@@ -198,14 +190,7 @@ startup_ap:
     movl $200, +0(%esp)
     call sleep_us
 
-    // wait for delivery
-5:
-    pause
-    movl 0x300(%edi), %eax
-    andl $(1 << 12), %eax
-    testl %eax, %eax
-    jnz 5b
-
+    call wait_for_delivery
 
     // restore old stack frame and registers
 

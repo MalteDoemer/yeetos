@@ -32,14 +32,14 @@ use multiboot2::Multiboot2Info;
 use spin::Mutex;
 
 use crate::{
-    acpi::{make_jump_to_kernel, KERNEL_ENTRY},
-    initrd::Initrd,
-    kernel_image::KernelImage,
-    vga::{Color, VGAWriter},
+    acpi::{make_jump_to_kernel, KERNEL_ENTRY}, devices::serial::SerialOutput, initrd::Initrd, kernel_image::KernelImage, vga::{Color, VGAWriter}
 };
 
 #[no_mangle]
 pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
+    use core::fmt::Write;
+    let _ = write!(SerialOutput, "test");
+
     // Initialize logger
     boot_logger::init();
     info!("intitialized boot logger...");

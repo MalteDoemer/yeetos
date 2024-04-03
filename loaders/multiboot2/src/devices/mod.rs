@@ -2,7 +2,6 @@ use x86::io::outb;
 
 pub mod pic;
 pub mod pit;
-pub mod serial;
 pub mod tsc;
 
 pub fn init() {

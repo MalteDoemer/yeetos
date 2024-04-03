@@ -14,8 +14,9 @@ ap_trampoline:
      *  Directly after startup every AP is in 16-bit mode. This means we now    *
      *  need to enable protected mode.                                          *
      *                                                                          *
-     *  Enabling protected mode is done by first loading a 32-bit GDT, then we  *
+     *  Enabling protected mode is done by first loading a 16-bit GDT, then we  *
      *  enable protected mode using cr0 and then perform a ljmp to reload %cs.  *
+     *  After that we load the 32-bit GDT defined in boot.s                     *
      * ------------------------------------------------------------------------ */ 
 
     // clear the data segment register to zero
@@ -36,8 +37,8 @@ ap_trampoline:
 .align 8
 temp_gdt:
     .long 0, 0                     // null descriptor
-    .long 0x0000FFFF, 0x00CF9A00   // code descriptor
-    .long 0x0000FFFF, 0x008F9200   // data descriptor
+    .long 0x0000FFFF, 0x00CF9A00   // 16 bit code descriptor
+    .long 0x0000FFFF, 0x008F9200   // 16 bit data descriptor
 temp_gdt_ptr:
     .short . - temp_gdt - 1
     .long (temp_gdt - ap_trampoline) + ap_trampoline_dest
@@ -50,14 +51,6 @@ prot_mode:
     // load data segment register
     movw $0x10, %ax
     movw %ax, %ds
-
-    /* ------------------------------------------------------------------------ *
-     *  Now we reload the GDT once again. This is not strictly necessary but    *
-     *  since we might resue the memory at 0x8000 later on and override the     *
-     *  temporary GDT it is better to reload the same GDT the BSP already uses  *
-     *                                                                          *
-     *  Note: this is the same code as in boot.s                                *
-     * ------------------------------------------------------------------------ */
 
     // load gdt
     lgdtl gdt32_ptr
@@ -286,21 +279,5 @@ startup_ap:
     movl %ebp, %esp
     popl %ebp
     ret
-
-
-
-
-
-
-
-
-
-    // sleep for 10 milliseconds
-    // subl $8, %esp           // allocate 8 bytes on the stack
-    // xorl %eax, %eax         // zero out eax
-    // movl $10, +0(%esp)      // move the argument onto the stack
-    // movl %eax, +4(%esp)     // argument is 64-bit so we need zero padding
-    // call sleep_ms           // call the function
-    // addl $8, %esp           // deallocated the stack parameters
 
     

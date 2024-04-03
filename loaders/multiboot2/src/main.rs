@@ -22,24 +22,23 @@ mod initrd;
 mod kernel_image;
 mod mmap;
 mod multiboot2;
+mod panic_handling;
 mod vga;
 
-use core::{arch::asm, panic::PanicInfo, sync::atomic::Ordering};
+use core::sync::atomic::Ordering;
 
-use log::{error, info};
+use log::info;
 use memory::{to_higher_half, VirtAddr};
 use multiboot2::Multiboot2Info;
-use spin::Mutex;
 
 use crate::{
-    acpi::{make_jump_to_kernel, KERNEL_ENTRY}, devices::serial::SerialOutput, initrd::Initrd, kernel_image::KernelImage, vga::{Color, VGAWriter}
+    acpi::{make_jump_to_kernel, KERNEL_ENTRY},
+    initrd::Initrd,
+    kernel_image::KernelImage,
 };
 
 #[no_mangle]
 pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
-    use core::fmt::Write;
-    let _ = write!(SerialOutput, "test");
-
     // Initialize logger
     boot_logger::init();
     info!("intitialized boot logger...");
@@ -140,30 +139,4 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
 
     // Note: BSP has id of 0
     make_jump_to_kernel(0, entry_point);
-}
-
-static PAINC_LOCK: Mutex<()> = Mutex::new(());
-
-#[panic_handler]
-pub fn panic(info: &PanicInfo) -> ! {
-    let guard = PAINC_LOCK.try_lock();
-
-    match guard {
-        Some(_) => {
-            error!("{}\n", info);
-
-            boot_logger::get(|log| {
-                use core::fmt::Write;
-                let mut writer = VGAWriter::new(Color::White, Color::Black);
-                let _ = writer.write_str(log.as_str());
-            });
-        }
-        None => {}
-    }
-
-    loop {
-        unsafe {
-            asm!("hlt");
-        }
-    }
 }

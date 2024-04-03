@@ -89,7 +89,6 @@ start:
 
     jz cpuid_error                      // if eax = zero then cpuid is not supported
 
-
     // check for PSE page size extension bit
     mov $1, %eax                        // we will call cpuid function 1
     cpuid                               // execute cpuid
@@ -236,9 +235,22 @@ pse_error_msg:
 
 .align 8
 gdt32:
-    .long 0, 0                     // null descriptor
-    .long 0x0000FFFF, 0x00CF9A00   // code descriptor
-    .long 0x0000FFFF, 0x008F9200   // data descriptor
+    // null descriptor
+    .quad 0
+
+    // 32-bit code descriptor
+    .long 0x000FFFF
+    .byte  0x00
+    .byte  0b10011010       // P=1, DPL=0, S=1, E=1, DC=0, RW=1, A=0
+    .byte  0b11001111       // G=1, DB=1
+    .byte  0x00
+
+    // 32-bit data descriptor
+    .long 0x000FFFF
+    .byte  0x00
+    .byte  0b10010010       // P=1, DPL=0, S=1, E=0, DC=0, RW=1, A=0
+    .byte  0b11001111       // G=1, DB=1
+    .byte  0x00
 gdt32_ptr:
     .short . - gdt32 - 1
     .long gdt32

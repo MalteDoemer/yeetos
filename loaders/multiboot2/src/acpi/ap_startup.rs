@@ -5,7 +5,7 @@ use log::info;
 use memory::{to_higher_half, VirtAddr};
 use spin::Once;
 
-use crate::{arch::paging, boot_info, devices, idt};
+use crate::{arch::paging, boot_info, idt};
 
 use super::acpi_handler::IdentityMapAcpiHandler;
 
@@ -76,11 +76,9 @@ pub fn startup_aps(acpi_tables: &AcpiTables<IdentityMapAcpiHandler>) {
 
 #[no_mangle]
 pub extern "C" fn rust_entry_ap(ap_id: usize) -> ! {
-    let ns = devices::tsc::now_ns() / 1000;
-
     AP_COUNT.fetch_add(1, Ordering::SeqCst);
 
-    info!("AP {}: started at {}", ap_id, ns);
+    info!("AP #{} started", ap_id);
 
     // initialize paging for this AP
     paging::init_ap();

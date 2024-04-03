@@ -10,7 +10,7 @@ QEMU_EXE=qemu-system-x86_64
 # QEMU_EXE=qemu-system-i386
 
 # qemu options
-MEMORY=6G
+MEMORY=4G
 CORES=4
 
 TARGET=$(ARCH)-yeetos
@@ -68,7 +68,7 @@ qemu-no-kvm: $(ISO)
 
 
 qemu-debug: $(ISO)
-	@$(QEMU_EXE) -d cpu_reset -S -gdb tcp::9000 -smp cpus=$(CORES) -m $(MEMORY)  -cdrom $(ISO) -serial stdio 
+	@$(QEMU_EXE) -S -gdb tcp::9000 -smp cpus=$(CORES) -m $(MEMORY)  -cdrom $(ISO) -serial stdio 
 
 .PHONY: qemu qemu-no-kvm qemu-debug clean clean-all  dump-kernel
 

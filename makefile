@@ -11,7 +11,7 @@ QEMU_EXE=qemu-system-x86_64
 
 # qemu options
 MEMORY=6G
-CORES=3
+CORES=4
 
 TARGET=$(ARCH)-yeetos
 

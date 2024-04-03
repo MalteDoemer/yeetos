@@ -1,7 +1,4 @@
-use core::{
-    arch::asm,
-    sync::atomic::{AtomicBool, AtomicUsize, Ordering},
-};
+use core::sync::atomic::{AtomicUsize, Ordering};
 
 use acpi::AcpiTables;
 use log::info;
@@ -14,9 +11,7 @@ use super::acpi_handler::IdentityMapAcpiHandler;
 
 pub static AP_COUNT: AtomicUsize = AtomicUsize::new(0);
 
-// pub static KERNEL_ENTRY: Once<VirtAddr> = Once::new();
-// pub static KERNEL_ENTRY: AtomicUsize = AtomicUsize::new(0);
-pub static BSP_DONE: AtomicBool = AtomicBool::new(false);
+pub static KERNEL_ENTRY: Once<VirtAddr> = Once::new();
 
 #[no_mangle]
 pub static KERNEL_STACKS_VADDR: AtomicUsize = AtomicUsize::new(0);
@@ -93,59 +88,10 @@ pub extern "C" fn rust_entry_ap(ap_id: usize) -> ! {
     // load IDT for this core
     idt::init_ap();
 
-    info!("AP {}: now idt and paging enabled ...", ap_id);
+    // this waits until the BSP is finished initializing
+    let entry_point = KERNEL_ENTRY.wait();
 
-    // devices::tsc::busy_sleep_ms(100);
-
-    panic!("ap panic");
-
-    // unsafe {
-    //     asm!("ud2");
-    // }
-
-    // loop {}
-
-    // loop {
-    // core::hint::spin_loop();
-
-    // let val = BSP_DONE.load(Ordering::SeqCst);
-
-    // if val {
-    //     break;
-    // }
-    // }
-
-    // info!("AP {}: bsp done at {}", ap_id, devices::tsc::now_ns() / 1000);
-
-    // let mut entry = 0;
-
-    // while entry == 0 {
-    //     entry = KERNEL_ENTRY.load(Ordering::SeqCst);
-    //     core::hint::spin_loop()
-    // }
-
-    // info!("got entry point for ap={}: {:#x}", ap_id, entry);
-
-    // loop {
-    //     unsafe {
-    //         asm!("hlt");
-    //     }
-    // }
-
-    // let entry = KERNEL_ENTRY.wait();
-
-    // loop {
-    //     let test = KERNEL_ENTRY.poll();
-
-    //     if test.is_some() {
-    //         break;
-    //     }
-    // }
-
-    // // this waits until the BSP is finished initializing
-    // let entry_point = KERNEL_ENTRY.wait();
-
-    // make_jump_to_kernel(ap_id, *entry_point);
+    make_jump_to_kernel(ap_id, *entry_point);
 }
 
 pub fn make_jump_to_kernel(processor_id: usize, entry_point_addr: VirtAddr) -> ! {

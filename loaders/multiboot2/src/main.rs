@@ -29,9 +29,10 @@ use core::{arch::asm, panic::PanicInfo, sync::atomic::Ordering};
 use log::{error, info};
 use memory::{to_higher_half, VirtAddr};
 use multiboot2::Multiboot2Info;
+use spin::Mutex;
 
 use crate::{
-    acpi::{make_jump_to_kernel, BSP_DONE},
+    acpi::{make_jump_to_kernel, KERNEL_ENTRY},
     initrd::Initrd,
     kernel_image::KernelImage,
     vga::{Color, VGAWriter},
@@ -135,34 +136,30 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
     boot_info::init_boot_info(&mboot_info, &memory_map, &initrd, &kernel_image_info);
 
     // This releases all started AP's to enter the kernel
-
-    BSP_DONE.store(true, Ordering::SeqCst);
-
-    // KERNEL_ENTRY.store(entry_point.to_inner(), Ordering::SeqCst);
-    // KERNEL_ENTRY.call_once(|| entry_point);
-
-    devices::tsc::busy_sleep_ms(1000);
-
-    panic!("bsp done!");
+    KERNEL_ENTRY.call_once(|| entry_point);
 
     // Note: BSP has id of 0
-    // make_jump_to_kernel(0, entry_point);
+    make_jump_to_kernel(0, entry_point);
 }
 
-#[no_mangle]
-pub extern "C" fn test_function(val: usize) -> usize {
-    val
-}
+static PAINC_LOCK: Mutex<()> = Mutex::new(());
 
 #[panic_handler]
 pub fn panic(info: &PanicInfo) -> ! {
-    error!("{}\n", info);
+    let guard = PAINC_LOCK.try_lock();
 
-    boot_logger::get(|log| {
-        use core::fmt::Write;
-        let mut writer = VGAWriter::new(Color::White, Color::Black);
-        let _ = writer.write_str(log.as_str());
-    });
+    match guard {
+        Some(_) => {
+            error!("{}\n", info);
+
+            boot_logger::get(|log| {
+                use core::fmt::Write;
+                let mut writer = VGAWriter::new(Color::White, Color::Black);
+                let _ = writer.write_str(log.as_str());
+            });
+        }
+        None => {}
+    }
 
     loop {
         unsafe {

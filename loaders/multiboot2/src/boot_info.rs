@@ -61,16 +61,20 @@ pub fn init_boot_info<'a>(
 fn get_kernel_image_info(kernel_image_info: &KernelImageInfo) -> KernelImageInfo {
     KernelImageInfo {
         stack: translate_range_to_higher_half(kernel_image_info.stack),
-        rodata: translate_range_to_higher_half(kernel_image_info.rodata),
+        rodata: translate_optional_range_to_higher_half(kernel_image_info.rodata),
         code: translate_range_to_higher_half(kernel_image_info.code),
-        relro: translate_range_to_higher_half(kernel_image_info.relro),
-        data: translate_range_to_higher_half(kernel_image_info.data),
+        relro: translate_optional_range_to_higher_half(kernel_image_info.relro),
+        data: translate_optional_range_to_higher_half(kernel_image_info.data),
     }
 }
 
 fn translate_range_to_higher_half(range: VirtualRange) -> VirtualRange {
     let page = Page::new(to_higher_half(range.start().to_addr()));
     VirtualRange::new(page, range.num_pages())
+}
+
+fn translate_optional_range_to_higher_half(range: Option<VirtualRange>) -> Option<VirtualRange> {
+    range.map(|rng| translate_range_to_higher_half(rng))
 }
 
 fn get_platform_info(mboot: &Multiboot2Info) -> PlatformInfo {

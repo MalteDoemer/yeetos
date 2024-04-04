@@ -1,17 +1,22 @@
 use alloc::vec::Vec;
 use boot_info::kernel_image_info::KernelImageInfo;
 use elf::{abi::PT_LOAD, endian::LittleEndian, segment::ProgramHeader, ElfBytes, ParseError};
-use memory::{Page, VirtAddr, VirtualRange};
+use memory::{to_lower_half, Page, VirtAddr, VirtualRange};
 
-pub const PHDR_EXEC: u32 = 1;
-pub const PHDR_WRITE: u32 = 2;
-pub const PHDR_READ: u32 = 4;
+const PHDR_EXEC: u32 = 1;
+const PHDR_WRITE: u32 = 2;
+const PHDR_READ: u32 = 4;
+
+const PHDR_RODATA: u32 = PHDR_READ;
+const PHDR_CODE: u32 = PHDR_EXEC | PHDR_READ;
+const PHDR_DATA: u32 = PHDR_READ | PHDR_WRITE;
 
 #[derive(Debug)]
 pub enum KernelImageError {
     ParseError(ParseError),
     ProgramHeadersMissing,
     ProgramHeadersInvalid,
+    CodeSegmentMissing,
 }
 
 impl From<ParseError> for KernelImageError {
@@ -20,101 +25,107 @@ impl From<ParseError> for KernelImageError {
     }
 }
 
+pub struct KernelImageProgramHeaders {
+    rodata: Option<ProgramHeader>,
+    code: ProgramHeader,
+    relro: Option<ProgramHeader>,
+    data: Option<ProgramHeader>,
+}
+
+impl KernelImageProgramHeaders {
+    pub fn image_base(&self) -> VirtAddr {
+        // Note: casts from u64 to usize are still correct on 32-bit targets
+        if let Some(rodata) = self.rodata {
+            VirtAddr::new(rodata.p_vaddr as usize)
+        } else {
+            VirtAddr::new(self.code.p_vaddr as usize)
+        }
+    }
+}
+
 pub struct KernelImage<'a> {
-    load_addr: VirtAddr,
-    num_cores: usize,
-    program_headers: [ProgramHeader; 4],
-    entry_point: usize,
+    info: KernelImageInfo,
+    phdrs: KernelImageProgramHeaders,
+    entry_point: VirtAddr,
     elf_image: ElfBytes<'a, LittleEndian>,
 }
 
 impl<'a> KernelImage<'a> {
-    pub fn new(
-        load_addr: VirtAddr,
+    /// Create a `KernelImage` struct that is going to be loaded at `load_start_addr`.
+    /// Using this function allows for ASLR for the kernel if used with a random offset.
+    pub fn new_reloc(
+        load_start_addr: VirtAddr,
         num_cores: usize,
         data: &'a [u8],
     ) -> Result<Self, KernelImageError> {
         let elf_image = ElfBytes::minimal_parse(data)?;
+        let phdrs = Self::get_phdrs(&elf_image)?;
+        let info = Self::get_image_info(&phdrs, load_start_addr, num_cores);
+        let entry_point = Self::get_entry_point(&elf_image, &phdrs, &info);
 
-        let program_headers = elf_image
-            .segments()
-            .ok_or(KernelImageError::ProgramHeadersMissing)?;
-
-        let program_headers = Self::parse_program_headers(
-            program_headers
-                .into_iter()
-                .filter(|phdr| phdr.p_type == PT_LOAD)
-                .collect(),
-        )?;
-
-        // Note: cast is still correct on 32-bit platforms
-        let entry_point = elf_image.ehdr.e_entry as usize;
-
-        Ok(KernelImage {
-            load_addr,
-            num_cores,
-            program_headers,
+        Ok(Self {
+            info,
+            phdrs,
             entry_point,
             elf_image,
         })
     }
 
-    fn parse_program_headers(
-        program_headers: Vec<ProgramHeader>,
-    ) -> Result<[ProgramHeader; 4], KernelImageError> {
-        // The kernel should always have exactly four program headers:
-        // RODATA, CODE, DATA(RELRO), DATA(NON-RELRO)
-        if program_headers.len() != 4 {
-            return Err(KernelImageError::ProgramHeadersInvalid);
-        }
+    /// Create a `KernelImage` struct that is going to be loaded into memory according to
+    /// the image base it was compiled with. The image base is assumed to be a higher-half address.
+    /// # Important
+    /// The stacks for the cpu cores will be located before the first PT_LOAD segment.
+    /// This means one has to make sure there is enough space inbetween the multiboot2 loader
+    /// and the kernel.
+    pub fn new_fixed(num_cores: usize, data: &'a [u8]) -> Result<Self, KernelImageError> {
+        let elf_image: ElfBytes<'a, LittleEndian> = ElfBytes::minimal_parse(data)?;
+        let phdrs = Self::get_phdrs(&elf_image)?;
+        let load_start_addr = Self::get_load_start_addr_for_fixed_image(&phdrs, num_cores);
+        let info = Self::get_image_info(&phdrs, load_start_addr, num_cores);
+        let entry_point = Self::get_entry_point(&elf_image, &phdrs, &info);
 
-        // RODATA segment is readonly
-        if program_headers[0].p_flags != PHDR_READ {
-            return Err(KernelImageError::ProgramHeadersInvalid);
-        }
-
-        // CODE segment is read/execute
-        if program_headers[1].p_flags != PHDR_READ | PHDR_EXEC {
-            return Err(KernelImageError::ProgramHeadersInvalid);
-        }
-
-        // RELRO is read/write
-        if program_headers[2].p_flags != PHDR_READ | PHDR_WRITE {
-            return Err(KernelImageError::ProgramHeadersInvalid);
-        }
-
-        // DATA is read/write
-        if program_headers[3].p_flags != PHDR_READ | PHDR_WRITE {
-            return Err(KernelImageError::ProgramHeadersInvalid);
-        }
-
-        let program_headers = [
-            program_headers[0],
-            program_headers[1],
-            program_headers[2],
-            program_headers[3],
-        ];
-
-        Ok(program_headers)
+        Ok(Self {
+            info,
+            phdrs,
+            entry_point,
+            elf_image,
+        })
     }
-}
 
-impl<'a> KernelImage<'a> {
-    pub fn get_kernel_image_info(&self) -> KernelImageInfo {
-        let stack = self.get_stack_vrange();
+    fn get_entry_point(
+        elf_image: &ElfBytes<'a, LittleEndian>,
+        phdrs: &KernelImageProgramHeaders,
+        info: &KernelImageInfo,
+    ) -> VirtAddr {
+        let file_addr = VirtAddr::new(elf_image.ehdr.e_entry as usize);
 
-        let load_base = stack.end().to_addr();
+        let image_base_file = phdrs.image_base();
+        let image_base_mem = info.image_base();
 
-        let rodata = Self::get_kernel_segment(load_base, self.program_headers[0]);
-        let code = Self::get_kernel_segment(load_base, self.program_headers[1]);
-        let relro = Self::get_kernel_segment(load_base, self.program_headers[2]);
-        let data = Self::get_kernel_segment(load_base, self.program_headers[3]);
+        image_base_mem + (file_addr - image_base_file)
+    }
 
-        assert!(
-            !stack.overlaps_with(rodata)
-                && !rodata.overlaps_with(code)
-                && !code.overlaps_with(relro)
-        );
+    fn get_image_info(
+        phdrs: &KernelImageProgramHeaders,
+        load_start_addr: VirtAddr,
+        num_cores: usize,
+    ) -> KernelImageInfo {
+        let image_base_file = phdrs.image_base();
+
+        let stack = Self::get_stack_segment(load_start_addr, num_cores);
+
+        let image_base_mem = stack.end().to_addr();
+
+        let rodata =
+            Self::get_optional_segment_from_phdr(phdrs.rodata, image_base_file, image_base_mem);
+
+        let code = Self::get_segment_from_phdr(phdrs.code, image_base_file, image_base_mem);
+
+        let relro =
+            Self::get_optional_segment_from_phdr(phdrs.relro, image_base_file, image_base_mem);
+
+        let data =
+            Self::get_optional_segment_from_phdr(phdrs.data, image_base_file, image_base_mem);
 
         KernelImageInfo {
             stack,
@@ -125,30 +136,194 @@ impl<'a> KernelImage<'a> {
         }
     }
 
+    /// This function computes the range of virtual memory occupied by the stacks.
+    fn get_stack_segment(load_start_addr: VirtAddr, num_cores: usize) -> VirtualRange {
+        let stack_start = load_start_addr;
+        let stack_size = num_cores * Self::kernel_stack_size_impl();
+        let stack_end = stack_start + stack_size;
+
+        let start_page = Page::new(stack_start);
+        let end_page = Page::new(stack_end.page_align_up_checked().unwrap());
+
+        VirtualRange::new_diff(start_page, end_page)
+    }
+
+    /// This function computes the range of virtual memory the given PHDR is going to occupy.
+    ///
+    /// - `image_base_file` is the image base this executable was compiled with (i.e. --image-base=... argument to the linker)
+    /// - `image_base_mem` is the calculated address of the first non-stack segment in memory
+    ///
+    /// # Note
+    /// When creating the image with `new_fixed()` then `image_base_file = image_base_mem`.
+    /// Otherwise they might differ since the kernel is compiled with position independant code enabled.
+    fn get_segment_from_phdr(
+        phdr: ProgramHeader,
+        image_base_file: VirtAddr,
+        image_base_mem: VirtAddr,
+    ) -> VirtualRange {
+        // Note: casts from u64 to usize are still correct on 32-bit targets
+        let addr_in_file = VirtAddr::new(phdr.p_vaddr as usize);
+        let offset = addr_in_file - image_base_file;
+
+        let segment_start = image_base_mem + offset;
+        let segment_end = segment_start + phdr.p_memsz as usize;
+
+        let start_page = Page::new(segment_start);
+        let end_page = Page::new(segment_end.page_align_up_checked().unwrap());
+
+        VirtualRange::new_diff(start_page, end_page)
+    }
+
+    /// See `get_segment_from_phdr()`
+    fn get_optional_segment_from_phdr(
+        phdr: Option<ProgramHeader>,
+        image_base_file: VirtAddr,
+        image_base_mem: VirtAddr,
+    ) -> Option<VirtualRange> {
+        phdr.map(|phdr| Self::get_segment_from_phdr(phdr, image_base_file, image_base_mem))
+    }
+
+    /// This function calculates the `load_start_addr`.
+    ///
+    /// # Note
+    /// There are three diffrent but equally important addresses here.
+    ///
+    /// `image_base_file` referes to the address of the first section in the elf file - this is configured at compile time and a higher-half address.
+    /// `image_base_mem` referes to the address where the first section will be loaded into memory
+    /// `load_start_addr` referes to the start of the stacks which are before `image_base_mem`
+    ///
+    /// Since the stacks are located before the .rodata section
+    /// we have `load_start_addr + total_stack_size = image_base_mem`
+    fn get_load_start_addr_for_fixed_image(
+        phdrs: &KernelImageProgramHeaders,
+        num_cores: usize,
+    ) -> VirtAddr {
+        let image_base_file = phdrs.image_base();
+        let image_base_mem = to_lower_half(image_base_file);
+        let total_stack_size = num_cores * Self::kernel_stack_size_impl();
+
+        image_base_mem - total_stack_size
+    }
+
+    fn get_phdrs(
+        elf_image: &ElfBytes<'a, LittleEndian>,
+    ) -> Result<KernelImageProgramHeaders, KernelImageError> {
+        let phdrs: Vec<ProgramHeader> = elf_image
+            .segments()
+            .ok_or(KernelImageError::ProgramHeadersMissing)?
+            .iter()
+            .filter(|phdr| phdr.p_type == PT_LOAD)
+            .collect();
+
+        if phdrs.len() == 0 {
+            return Err(KernelImageError::ProgramHeadersMissing);
+        } else if phdrs.len() > 4 {
+            // we expect at maximum 4 segments: .rodata, .code, .relro, .data
+            // if there are more than 4 this function needs to be updated
+            return Err(KernelImageError::ProgramHeadersInvalid);
+        }
+
+        // Normally if all segments are present the order (when using ld.lld as linker) is:
+        // - .rodata
+        // - .code
+        // - .relro
+        // - .data
+        //
+        // Now the only segment that is strictly required (by us) is the .code segment.
+        // If there is only one segment with PHDR_DATA flags it is the .data segment, if
+        // there are two, then the first is the .relro segment and the second is the .data segment
+
+        let rodata = phdrs
+            .iter()
+            .find(|&&phdr| phdr.p_flags == PHDR_RODATA)
+            .map(|phdr| *phdr);
+
+        let code = *phdrs
+            .iter()
+            .find(|&&phdr| phdr.p_flags == PHDR_CODE)
+            .ok_or(KernelImageError::CodeSegmentMissing)?;
+
+        let mut data_phdrs = phdrs.iter().filter(|&&phdr| phdr.p_flags == PHDR_DATA);
+        let first_data = data_phdrs.next();
+        let second_data = data_phdrs.next();
+
+        let (relro, data) = match (first_data, second_data) {
+            (None, None) => (None, None),
+            (Some(data), None) => (None, Some(*data)),
+            (Some(relro), Some(data)) => (Some(*relro), Some(*data)),
+            (None, Some(_)) => panic!("invalid state"),
+        };
+
+        Ok(KernelImageProgramHeaders {
+            rodata,
+            code,
+            relro,
+            data,
+        })
+    }
+
+    fn kernel_stack_size_impl() -> usize {
+        16 * 4096
+    }
+}
+
+impl<'a> KernelImage<'a> {
+    pub fn kernel_image_info(&self) -> &KernelImageInfo {
+        &self.info
+    }
+
+    pub fn kernel_entry_point(&self) -> VirtAddr {
+        self.entry_point
+    }
+
+    pub fn elf_image(&self) -> &ElfBytes<'a, LittleEndian> {
+        &self.elf_image
+    }
+
+    pub fn kernel_stack_size(&self) -> usize {
+        Self::kernel_stack_size_impl()
+    }
+
     pub fn load_kernel(&self) -> Result<(), KernelImageError> {
-        let info = self.get_kernel_image_info();
+        let image_base_file = self.phdrs.image_base();
+        let image_base_mem = self.info.image_base();
 
-        let load_base = info.stack.end().to_addr();
+        if let (Some(phdr), Some(range)) = (self.phdrs.rodata, self.info.rodata) {
+            self.load_segment(image_base_mem, image_base_file, phdr, range)?;
+        }
 
-        self.load_segment(load_base, self.program_headers[0], info.rodata)?;
-        self.load_segment(load_base, self.program_headers[1], info.code)?;
-        self.load_segment(load_base, self.program_headers[2], info.relro)?;
-        self.load_segment(load_base, self.program_headers[3], info.data)?;
+        self.load_segment(
+            image_base_mem,
+            image_base_file,
+            self.phdrs.code,
+            self.info.code,
+        )?;
+
+        if let (Some(phdr), Some(range)) = (self.phdrs.relro, self.info.relro) {
+            self.load_segment(image_base_mem, image_base_file, phdr, range)?;
+        }
+
+        if let (Some(phdr), Some(range)) = (self.phdrs.data, self.info.data) {
+            self.load_segment(image_base_mem, image_base_file, phdr, range)?;
+        }
 
         Ok(())
     }
 
     fn load_segment(
         &self,
-        load_base: VirtAddr,
+        image_base_mem: VirtAddr,
+        image_base_file: VirtAddr,
         program_header: ProgramHeader,
         segment: VirtualRange,
     ) -> Result<(), KernelImageError> {
         let zero_start = segment.start().to_addr();
 
-        // Note: casts are still valid on 32-bit platforms
-        let load_start = load_base + program_header.p_vaddr as usize;
+        // Note: casts from u64 to usize are still correct on 32-bit targets
+        let addr_in_file = VirtAddr::new(program_header.p_vaddr as usize);
+        let load_start = image_base_mem + (addr_in_file - image_base_file);
         let load_end = load_start + program_header.p_filesz as usize;
+
         let zero_end = segment.end().to_addr();
 
         assert!(zero_start <= load_start && load_start <= load_end && load_end <= zero_end);
@@ -162,7 +337,7 @@ impl<'a> KernelImage<'a> {
         unsafe {
             let data_ptr = self.elf_image.segment_data(&program_header)?.as_ptr();
 
-            // Note: cast is still valid on 32-bit platforms
+            // Note: cast from u64 to usize are still correct on 32-bit targets
             core::ptr::copy(
                 data_ptr,
                 load_start.as_ptr_mut(),
@@ -176,37 +351,5 @@ impl<'a> KernelImage<'a> {
         }
 
         Ok(())
-    }
-
-    pub fn get_kernel_stack_size(&self) -> usize {
-        64 * 1024
-    }
-
-    pub fn get_kernel_entry_point(&self) -> VirtAddr {
-        let info = self.get_kernel_image_info();
-        info.stack.end().to_addr() + self.entry_point
-    }
-
-    fn get_stack_vrange(&self) -> VirtualRange {
-        let stack_start = self.load_addr;
-        let stack_size = self.get_kernel_stack_size() * self.num_cores;
-        let stack_end = stack_start + stack_size;
-
-        let start_page = Page::new(stack_start);
-        let end_page = Page::new(stack_end.page_align_up_checked().unwrap());
-
-        VirtualRange::new_diff(start_page, end_page)
-    }
-
-    fn get_kernel_segment(load_base: VirtAddr, phdr: ProgramHeader) -> VirtualRange {
-        // Note1: p_vaddr is configured to be relative to address 0x00 at compile time
-        // Note2: casts are still valid on 32-bit platforms
-        let load_addr = load_base + phdr.p_vaddr as usize;
-        let load_end = load_addr + phdr.p_memsz as usize;
-
-        let start_page = Page::new(load_addr);
-        let end_page = Page::new(load_end.page_align_up_checked().unwrap());
-
-        VirtualRange::new_diff(start_page, end_page)
     }
 }

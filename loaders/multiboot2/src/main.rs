@@ -25,6 +25,7 @@ mod multiboot2;
 mod panic_handling;
 mod vga;
 
+use log::info;
 use memory::{to_higher_half, VirtAddr};
 use multiboot2::Multiboot2Info;
 
@@ -68,21 +69,24 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
         .expect("kernel file not found");
 
     // Create the KernelImage struct:
-    // - The load address will be initrd.end_addr()
-    // - Right after the load address there will be
-    //   place for num_cores * KERNEL_STACK_SIZE bytes
-    //   to be used as stack memory
-    // - After that the kernel code, rodata and data segments
-    //   will be loaded
+    // Normally new_reloc is used to create the kernel image.
+    // However when debugging new_fixed is used so that gdb works correctly.
     // Note: this function does not yet load the kernel.
-    let kernel_image = KernelImage::new(
+    #[cfg(not(debug_assertions))]
+    let kernel_image = KernelImage::new_reloc(
         initrd.end_addr(),
         acpi::number_of_cores(&acpi_tables),
         kernel_file.data(),
     )
     .expect("unable to parse the kernel elf image");
+    #[cfg(debug_assertions)]
+    let kernel_image =
+        KernelImage::new_fixed(acpi::number_of_cores(&acpi_tables), kernel_file.data())
+            .expect("unable to parse the kernel elf image");
 
-    let kernel_image_info = kernel_image.get_kernel_image_info();
+
+
+    let kernel_image_info = kernel_image.kernel_image_info();
 
     // Create the physical memory map
     let memory_map = mmap::create_memory_map(
@@ -91,11 +95,18 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
         kernel_image_info.end().to_phys(),
     );
 
+    for entry in &memory_map {
+        info!(
+            "start={:p} end={:p} type={:?}",
+            entry.start, entry.end, entry.kind
+        );
+    }
+
     // Initialize some global variables that the ap initialization
     // code will use to set up the stacks for each core.
     acpi::init_kernel_stack_vars(
         kernel_image_info.stack.start().to_addr(),
-        kernel_image.get_kernel_stack_size(),
+        kernel_image.kernel_stack_size(),
     );
 
     // Startup the Application Processors
@@ -115,7 +126,7 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
 
     // Get the entry point address from the kernel image and translate it into
     // a higher-half address.
-    let entry_point = to_higher_half(kernel_image.get_kernel_entry_point());
+    let entry_point = to_higher_half(kernel_image.kernel_entry_point());
 
     // Initialize the boot_info header
     boot_info::init_boot_info(&mboot_info, &memory_map, &initrd, &kernel_image_info);

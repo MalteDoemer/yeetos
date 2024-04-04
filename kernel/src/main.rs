@@ -1,8 +1,11 @@
 #![no_std]
 #![no_main]
+#![deny(unsafe_op_in_unsafe_fn)]
+#![allow(dead_code)]
 
 mod arch;
 mod ensure_image;
+mod kresult;
 mod panic_handler;
 
 use boot_info::BootInfoHeader;
@@ -15,5 +18,5 @@ pub extern "C" fn kernel_main(_boot_info: &BootInfoHeader, proc_id: usize) -> ! 
         unsafe { ensure_image::test() };
     }
 
-    arch::halt_cpu();
+    arch::cpu::halt();
 }

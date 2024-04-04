@@ -12,5 +12,13 @@ overflow-checks = true
 overflow-checks = true
 
 [dependencies]
+spin = "0.9.8"
+
 memory = { path = "../crates/memory" }
 boot_info = { path = "../crates/boot_info" }
+
+[target.'cfg(target_arch = "x86")'.dependencies]
+x86 = "0.52.0"
+
+[target.'cfg(target_arch = "x86_64")'.dependencies]
+x86 = "0.52.0"

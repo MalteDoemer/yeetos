@@ -1,10 +1,7 @@
-use core::arch::asm;
+pub mod cpu;
+pub mod interrupts;
 
-pub fn halt_cpu() -> ! {
-    loop {
-        unsafe { asm!("hlt") };
-    }
-}
+use core::arch::asm;
 
 pub fn test() {
     unsafe {

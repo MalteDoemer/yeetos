@@ -5,19 +5,17 @@ use log::info;
 use memory::{to_higher_half, VirtAddr};
 use spin::Once;
 
-use crate::{arch::paging, boot_info, idt};
-
-use super::acpi_handler::IdentityMapAcpiHandler;
+use crate::{acpi::IdentityMapAcpiHandler, arch::paging, boot_info, idt};
 
 pub static AP_COUNT: AtomicUsize = AtomicUsize::new(0);
 
 pub static KERNEL_ENTRY: Once<VirtAddr> = Once::new();
 
 #[no_mangle]
-pub static KERNEL_STACKS_VADDR: AtomicUsize = AtomicUsize::new(0);
+static KERNEL_STACKS_VADDR: AtomicUsize = AtomicUsize::new(0);
 
 #[no_mangle]
-pub static KERNEL_STACK_SIZE: AtomicUsize = AtomicUsize::new(0);
+static KERNEL_STACK_SIZE: AtomicUsize = AtomicUsize::new(0);
 
 extern "C" {
     fn copy_ap_trampoline();
@@ -32,15 +30,33 @@ extern "C" {
     ) -> !;
 }
 
-// Initializes the kernel stack variables for the ap initialization code.
-// This function needs to be called before calling `startup_aps()`
+/// Initializes the kernel stack variables for the ap initialization code.
+/// This function needs to be called before calling `startup_aps()`
+///
+/// # Panics
+/// If kernel_stacks_start or kernel_stack_size is zero.
 pub fn init_kernel_stack_vars(kernel_stacks_start: VirtAddr, kernel_stack_size: usize) {
     let addr: usize = kernel_stacks_start.into();
+
+    if addr == 0 {
+        panic!("init_kernel_stack_vars() called with kernel_stacks_start=0");
+    }
+
+    if kernel_stack_size == 0 {
+        panic!("init_kernel_stack_vars() called with kernel_stack_size=0");
+    }
+
     KERNEL_STACKS_VADDR.store(addr, Ordering::SeqCst);
     KERNEL_STACK_SIZE.store(kernel_stack_size, Ordering::SeqCst);
 }
 
 pub fn startup_aps(acpi_tables: &AcpiTables<IdentityMapAcpiHandler>) {
+    if KERNEL_STACKS_VADDR.load(Ordering::SeqCst) == 0
+        || KERNEL_STACK_SIZE.load(Ordering::SeqCst) == 0
+    {
+        panic!("startup_aps() called before init_kernel_stack_vars()");
+    }
+
     let platform_info = acpi_tables
         .platform_info()
         .expect("unable to get acpi platform info");
@@ -53,9 +69,10 @@ pub fn startup_aps(acpi_tables: &AcpiTables<IdentityMapAcpiHandler>) {
 
     let apic = match im {
         acpi::InterruptModel::Apic(apic) => apic,
-        _ => panic!("acpi interrupt model unkown"),
+        _ => panic!("acpi interrupt model unknown"),
     };
 
+    // Safety: this function is implemented in boot.s and assumed to be safe.
     unsafe {
         copy_ap_trampoline();
     }
@@ -68,6 +85,7 @@ pub fn startup_aps(acpi_tables: &AcpiTables<IdentityMapAcpiHandler>) {
     for proc in processor_info.application_processors.iter() {
         let apic_id = proc.local_apic_id.try_into().unwrap();
 
+        // Safety: this function is implemented in boot.s and assumed to be safe.
         unsafe {
             startup_ap(addr, apic_id);
         }
@@ -78,7 +96,7 @@ pub fn startup_aps(acpi_tables: &AcpiTables<IdentityMapAcpiHandler>) {
 pub extern "C" fn rust_entry_ap(ap_id: usize) -> ! {
     AP_COUNT.fetch_add(1, Ordering::SeqCst);
 
-    info!("AP #{} started", ap_id);
+    info!("application processor #{} started", ap_id);
 
     // initialize paging for this AP
     paging::init_ap();

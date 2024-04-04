@@ -1,7 +1,7 @@
 use memory::VirtAddr;
 use tar_no_std::{ArchiveEntry, TarArchiveRef};
 
-use crate::multiboot2::MultibootModule;
+use crate::multiboot2::{Multiboot2Info, MultibootModule};
 
 pub struct Initrd<'a> {
     data: &'a [u8],
@@ -18,8 +18,8 @@ impl<'a> Initrd<'a> {
         // Note:
         // Physical address == Virtual address
 
-        let start_addr = module.mod_start as usize;
-        let end_addr = module.mod_end as usize;
+        let start_addr: usize = module.mod_start.try_into().unwrap();
+        let end_addr: usize = module.mod_end.try_into().unwrap();
         let size = end_addr - start_addr;
 
         let slice = unsafe { core::slice::from_raw_parts(start_addr as *const u8, size) };
@@ -30,21 +30,14 @@ impl<'a> Initrd<'a> {
         }
     }
 
-    // /// Creates a `Initrd` from the multiboot2 info struct.
-    // ///
-    // /// ### Panics
-    // /// Panics if no initrd module has been provided by the bootloader.
-    // pub fn from_multiboot_info(mboot_info: &Multiboot2Info) -> Initrd {
-    //     let initrd_mod = mboot_info
-    //         .modules
-    //         .iter()
-    //         .find(|module| module.info == "initrd")
-    //         .expect("initrd module not found");
+    /// Creates a `Initrd` by searching for the correct module from the multiboot2 struct.
+    pub fn from_multiboot_info(mboot_info: &Multiboot2Info) -> Option<Initrd> {
+        let module = mboot_info.module_by_name("initrd")?;
 
-    //     // Safety:
-    //     // initrd_mod is assumed to be mapped and not used by anything else.
-    //     unsafe { Initrd::from_module(initrd_mod) }
-    // }
+        // Safety: This is the only function accessing the "initrd" module.
+        // Thus there will be no other references to the memory other than those obtained by this function.
+        unsafe { Some(Self::from_module(module)) }
+    }
 
     pub fn tar_archive(&self) -> &TarArchiveRef {
         &self.tar_archive

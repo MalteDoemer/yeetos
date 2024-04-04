@@ -18,8 +18,6 @@ mod arch {
         // since we only support 32-bit physical addresses (no PAE)
         // we have to ignore all memory above 0xFFFFFFFF
 
-        // let regions = mem_regions.iter().filter(|region| region.)
-
         let mut memory_map = Vec::new();
         for region in mem_regions {
             if region.base_addr <= core::u32::MAX as u64 {
@@ -27,8 +25,6 @@ mod arch {
             } else {
                 // ignored
             }
-
-            // memory_map.push(convert_region_to_entry(*region));
         }
 
         memory_map

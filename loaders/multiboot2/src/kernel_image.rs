@@ -162,6 +162,7 @@ impl<'a> KernelImage<'a> {
         unsafe {
             let data_ptr = self.elf_image.segment_data(&program_header)?.as_ptr();
 
+            // Note: cast is still valid on 32-bit platforms
             core::ptr::copy(
                 data_ptr,
                 load_start.as_ptr_mut(),

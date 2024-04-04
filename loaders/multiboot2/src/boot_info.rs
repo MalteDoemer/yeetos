@@ -21,6 +21,7 @@ use crate::{
 #[link_section = ".boot_info"]
 static mut BOOT_INFO_HEADER: BootInfoHeader = BootInfoHeader::empty();
 
+/// Get the higher-half address of the boot_info header.
 pub fn get_boot_info_addr() -> VirtAddr {
     let boot_info_ptr = unsafe { addr_of_mut!(BOOT_INFO_HEADER) };
     to_higher_half((boot_info_ptr as usize).into())

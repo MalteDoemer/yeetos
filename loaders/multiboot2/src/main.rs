@@ -25,9 +25,6 @@ mod multiboot2;
 mod panic_handling;
 mod vga;
 
-use core::sync::atomic::Ordering;
-
-use log::info;
 use memory::{to_higher_half, VirtAddr};
 use multiboot2::Multiboot2Info;
 
@@ -41,7 +38,6 @@ use crate::{
 pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
     // Initialize logger
     boot_logger::init();
-    info!("intitialized boot logger...");
 
     // Initialize IDT
     idt::init();
@@ -64,13 +60,7 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
     );
 
     // Get the INITRD module loaded by the multiboot2 loader
-    let initrd_module = mboot_info
-        .module_by_name("initrd")
-        .expect("initrd module not found");
-
-    // Safety:
-    // The memory from the initrd module should be safe to access
-    let initrd = unsafe { Initrd::from_module(initrd_module) };
+    let initrd = Initrd::from_multiboot_info(&mboot_info).expect("initrd module not found");
 
     // Search for the kernel file in the INITRD
     let kernel_file = initrd
@@ -101,10 +91,6 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
         kernel_image_info.end().to_phys(),
     );
 
-    for entry in &memory_map {
-        info!("{:p}..{:p}: {:?}", entry.start, entry.end, entry.kind);
-    }
-
     // Initialize some global variables that the ap initialization
     // code will use to set up the stacks for each core.
     acpi::init_kernel_stack_vars(
@@ -118,18 +104,18 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
     // Parse elf structure and load the kernel into memory
     kernel_image.load_kernel().expect("failed to load kernel");
 
-    // Enable the higher half mapping
+    // Initialize paging and enable the higher half mapping.
+    //
     // Note: after this access to some addresses is no longer possible
     // This means functions such as startup_aps() and get_acpi_tables() must be called before
+    //
+    // Also: most of the initialization of the paging structs is done in boot.s
+    // on x86_64 paging is already enabled in boot.s
     arch::paging::init();
 
+    // Get the entry point address from the kernel image and translate it into
+    // a higher-half address.
     let entry_point = to_higher_half(kernel_image.get_kernel_entry_point());
-    info!("kernel entry point: {:?}", entry_point);
-
-    info!(
-        "we have a total of {} cores running!",
-        acpi::AP_COUNT.load(Ordering::SeqCst) + 1
-    );
 
     // Initialize the boot_info header
     boot_info::init_boot_info(&mboot_info, &memory_map, &initrd, &kernel_image_info);

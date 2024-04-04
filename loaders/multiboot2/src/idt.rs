@@ -1,6 +1,7 @@
 use core::arch::asm;
 
 use log::info;
+use spin::Once;
 use x86::{
     dtables::{lidt, DescriptorTablePointer},
     irq::{
@@ -13,71 +14,29 @@ use x86::{
 
 use crate::devices::{pic, pit};
 
+const NUM_IDT_ENTRIES: usize = 256;
+
+static IDT: Once<InterruptDescriptorTable> = Once::new();
+
 #[cfg(target_arch = "x86")]
 mod arch {
-    use x86::segmentation::Descriptor;
-
-    pub type DescriptorType = Descriptor;
-    pub type InnerType = u32;
-
-    #[derive(Debug)]
-    #[repr(C)]
-    pub struct IntStackFrame {
-        eflags: u32,
-        cs: u32,
-        eip: u32,
-    }
-
-    impl IntStackFrame {
-        pub fn flags(&self) -> u32 {
-            self.eflags
-        }
-
-        pub fn code_segment(&self) -> u32 {
-            self.cs
-        }
-
-        pub fn instruction_pointer(&self) -> u32 {
-            self.eip
-        }
-    }
+    pub type DescriptorType = x86::segmentation::Descriptor;
+    pub type BaseType = u32;
 }
 
 #[cfg(target_arch = "x86_64")]
 mod arch {
-    use x86::bits64::segmentation::Descriptor64;
-
-    pub type DescriptorType = Descriptor64;
-    pub type InnerType = u64;
-
-    #[derive(Debug)]
-    #[repr(C)]
-    pub struct IntStackFrame {
-        rflags: u64,
-        cs: u64,
-        rip: u64,
-    }
-
-    impl IntStackFrame {
-        pub fn flags(&self) -> u64 {
-            self.rflags
-        }
-
-        pub fn code_segment(&self) -> u64 {
-            self.cs
-        }
-
-        pub fn instruction_pointer(&self) -> u64 {
-            self.rip
-        }
-    }
+    pub type DescriptorType = x86::bits64::segmentation::Descriptor64;
+    pub type BaseType = u64;
 }
 
-pub use arch::IntStackFrame;
-
-pub const NUM_IDT_ENTRIES: usize = 256;
-
-static mut IDT: InterruptDescriptorTable = InterruptDescriptorTable::empty();
+#[derive(Debug)]
+#[repr(C)]
+pub struct IntStackFrame {
+    flags: arch::BaseType,
+    code_segment: arch::BaseType,
+    instruction_pointer: arch::BaseType,
+}
 
 #[repr(align(8), C)]
 pub struct InterruptDescriptorTable {
@@ -88,9 +47,8 @@ pub unsafe trait IntHandlerFunc {
     fn addr(&self) -> usize;
 }
 
-pub type IntFunc = extern "x86-interrupt" fn(info: arch::IntStackFrame);
-pub type IntFuncErrCode =
-    extern "x86-interrupt" fn(info: arch::IntStackFrame, err_code: arch::InnerType);
+pub type IntFunc = extern "x86-interrupt" fn(info: IntStackFrame);
+pub type IntFuncErrCode = extern "x86-interrupt" fn(info: IntStackFrame, err_code: arch::BaseType);
 
 unsafe impl IntHandlerFunc for IntFunc {
     fn addr(&self) -> usize {
@@ -128,7 +86,7 @@ impl InterruptDescriptorTable {
         let code_sel = SegmentSelector::new(1, Ring::Ring0);
 
         self.entries[idx as usize] =
-            DescriptorBuilder::trap_gate_descriptor(code_sel, func.addr() as arch::InnerType)
+            DescriptorBuilder::trap_gate_descriptor(code_sel, func.addr() as arch::BaseType)
                 .present()
                 .dpl(Ring::Ring0)
                 .finish();
@@ -138,7 +96,7 @@ impl InterruptDescriptorTable {
         let code_sel = SegmentSelector::new(1, Ring::Ring0);
 
         self.entries[idx as usize] =
-            DescriptorBuilder::interrupt_descriptor(code_sel, func.addr() as arch::InnerType)
+            DescriptorBuilder::interrupt_descriptor(code_sel, func.addr() as arch::BaseType)
                 .present()
                 .dpl(Ring::Ring0)
                 .finish();
@@ -146,55 +104,59 @@ impl InterruptDescriptorTable {
 }
 
 pub fn init() {
-    // Safety: there is no data-race accessing the IDT
-    // during initialization.
-    unsafe {
-        IDT.set_trap_handler::<IntFunc>(DIVIDE_ERROR_VECTOR, divide_by_zero_handler);
-        IDT.set_trap_handler::<IntFunc>(INVALID_OPCODE_VECTOR, invalid_opcode_handler);
-        IDT.set_trap_handler::<IntFuncErrCode>(DOUBLE_FAULT_VECTOR, double_fault_handler);
-        IDT.set_trap_handler::<IntFuncErrCode>(
+    IDT.call_once(|| {
+        let mut idt = InterruptDescriptorTable::empty();
+
+        idt.set_trap_handler::<IntFunc>(DIVIDE_ERROR_VECTOR, divide_by_zero_handler);
+        idt.set_trap_handler::<IntFunc>(INVALID_OPCODE_VECTOR, invalid_opcode_handler);
+        idt.set_trap_handler::<IntFuncErrCode>(DOUBLE_FAULT_VECTOR, double_fault_handler);
+        idt.set_trap_handler::<IntFuncErrCode>(
             GENERAL_PROTECTION_FAULT_VECTOR,
             general_protection_fault_handler,
         );
-        IDT.set_interrupt_handler::<IntFunc>(pic::PRIMARY_VECTOR_OFFSET + 0x00, pit::pit_interrupt);
-        IDT.load();
+        idt.set_interrupt_handler::<IntFunc>(pic::PRIMARY_VECTOR_OFFSET + 0x00, pit::pit_interrupt);
+
+        idt
+    });
+
+    // Safety: the IDT is assumed to be correctly set up.
+    unsafe {
+        IDT.wait().load();
     }
 }
 
 pub fn init_ap() {
+    // Safety: the IDT is assumed to be correctly set up.
     unsafe {
-        IDT.load();
+        IDT.get()
+            .expect("idt::init_ap() called before idt::init() finished")
+            .load();
     }
 }
 
-extern "x86-interrupt" fn divide_by_zero_handler(_frame: arch::IntStackFrame) {
+extern "x86-interrupt" fn divide_by_zero_handler(_frame: IntStackFrame) {
     panic!("divide by zero");
 }
 
 extern "x86-interrupt" fn general_protection_fault_handler(
-    frame: arch::IntStackFrame,
-    err_code: arch::InnerType,
+    frame: IntStackFrame,
+    err_code: arch::BaseType,
 ) {
     info!("error: {:#x}", err_code);
     info!("stack_frame: {:?}", frame);
-    // info!("instr: {:#x}", frame.instruction_pointer());
     panic!("gerneral protection fault");
 }
 
-extern "x86-interrupt" fn invalid_opcode_handler(_frame: arch::IntStackFrame) {
+extern "x86-interrupt" fn invalid_opcode_handler(_frame: IntStackFrame) {
     panic!("invalid opcode");
 }
 
-extern "x86-interrupt" fn double_fault_handler(
-    _frame: arch::IntStackFrame,
-    _err_code: arch::InnerType,
-) {
+extern "x86-interrupt" fn double_fault_handler(_frame: IntStackFrame, _err_code: arch::BaseType) {
     // if we are here, there is something seriously wrong, so its probably not a good idea to call panic
     // so we instead do a hardcoded message with outb to port 0x3F8 (COM1)
     // The message consist of following bytes:
     // 0x64, 0x6f, 0x75, 0x62, 0x6c, 0x65, 0x20, 0x66, 0x61, 0x75, 0x6c, 0x74
-    // which translates to "double fault"
-    // and then we just halt the cpu.
+    // which translates to "double fault" and then we just halt the cpu.
 
     unsafe {
         asm!(

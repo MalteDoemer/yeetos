@@ -25,7 +25,7 @@ SECTIONS
 
     .stack ALIGN (4K) (NOLOAD) : {
         __stack_start = .;
-        . += 4 * 4096;
+        . += 16 * 4096;
         __stack_end = .;
     }
 

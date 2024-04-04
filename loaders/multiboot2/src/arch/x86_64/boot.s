@@ -281,19 +281,20 @@ gdt64:
     .quad 0
 
     // 64-bit code descriptor
-    .short 0xFF
-    .short 0x00
+
+    .short 0x0000
+    .short 0x0000
     .byte 0x00
     .byte 0b10011010
-    .byte 0b10101111    
+    .byte 0b10100000    
     .byte 0x00
 
     // 64-bit data descriptor
-    .short 0x00
-    .short 0x00
+    .short 0x0000
+    .short 0x0000
     .byte 0x00
     .byte 0b10010010
-    .byte 0b00000000
+    .byte 0b11000000
     .byte 0x00
 gdt64_ptr:
     .short . - gdt64 - 1

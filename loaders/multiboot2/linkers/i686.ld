@@ -31,7 +31,7 @@ SECTIONS
 
     .heap ALIGN (4K) (NOLOAD) : {
         __heap_start = .;
-        . += 4 * 4096;
+        . += 16 * 4096;
         __heap_end = .;
     }
 

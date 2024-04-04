@@ -17,8 +17,13 @@ mod x86_64 {
     pub const PAGE_TABLE_ENTRIES: usize = 512;
 
     /// Adds a fixed offset of `KERNEL_BASE` to the address.
-    pub fn to_higher_half(addr: VirtAddr) -> VirtAddr {
-        addr + KERNEL_BASE
+    pub const fn to_higher_half(addr: VirtAddr) -> VirtAddr {
+        VirtAddr::new(addr.to_inner() + KERNEL_BASE)
+    }
+
+    /// Subtracts a fixed offset of `KERNEL_BASE` from the address.
+    pub const fn to_lower_half(addr: VirtAddr) -> VirtAddr {
+        VirtAddr::new(addr.to_inner() - KERNEL_BASE)
     }
 }
 

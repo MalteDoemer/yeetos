@@ -4,19 +4,22 @@
 #![allow(dead_code)]
 
 mod arch;
-mod ensure_image;
 mod kresult;
 mod panic_handler;
 
 use boot_info::BootInfoHeader;
+use log::info;
+use spin::Once;
+
+static INIT: Once<()> = Once::new();
 
 #[no_mangle]
-pub extern "C" fn kernel_main(_boot_info: &BootInfoHeader, proc_id: usize) -> ! {
-    arch::test();
+pub extern "C" fn kernel_main(_boot_info: &BootInfoHeader, _proc_id: usize) -> ! {
 
-    if proc_id == 0 {
-        unsafe { ensure_image::test() };
-    }
+    INIT.call_once(|| {    
+        kernel_logger::init();
+        info!("hey from the kernel!");
+    });
 
     arch::cpu::halt();
 }

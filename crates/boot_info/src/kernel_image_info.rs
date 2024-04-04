@@ -2,20 +2,20 @@ use memory::{VirtAddr, VirtualRange};
 
 pub struct KernelImageInfo {
     pub stack: VirtualRange,
-    pub rodata: VirtualRange,
+    pub rodata: Option<VirtualRange>,
     pub code: VirtualRange,
-    pub relro: VirtualRange,
-    pub data: VirtualRange,
+    pub relro: Option<VirtualRange>,
+    pub data: Option<VirtualRange>,
 }
 
 impl KernelImageInfo {
     pub const fn empty() -> Self {
         KernelImageInfo {
             stack: VirtualRange::zero(),
-            rodata: VirtualRange::zero(),
+            rodata: None,
             code: VirtualRange::zero(),
-            relro: VirtualRange::zero(),
-            data: VirtualRange::zero(),
+            relro: None,
+            data: None,
         }
     }
 
@@ -23,8 +23,18 @@ impl KernelImageInfo {
         self.stack.start().to_addr()
     }
 
+    pub fn image_base(&self) -> VirtAddr {
+        self.stack.end().to_addr()
+    }
+
     pub fn end(&self) -> VirtAddr {
-        self.data.end().to_addr()
+        if let Some(data) = self.data {
+            data.end().to_addr()
+        } else if let Some(relro) = self.relro {
+            relro.end().to_addr()
+        } else {
+            self.code.end().to_addr()
+        }
     }
 
     pub fn size_in_bytes(&self) -> usize {

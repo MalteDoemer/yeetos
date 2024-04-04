@@ -13,12 +13,22 @@ overflow-checks = true
 
 [dependencies]
 spin = "0.9.8"
+log = "0.4.21"
 
 memory = { path = "../crates/memory" }
 boot_info = { path = "../crates/boot_info" }
 
+
 [target.'cfg(target_arch = "x86")'.dependencies]
 x86 = "0.52.0"
+kernel_logger = { path = "../crates/kernel_logger", features = [
+    "serial-log",
+    "vga-log",
+] }
 
 [target.'cfg(target_arch = "x86_64")'.dependencies]
 x86 = "0.52.0"
+kernel_logger = { path = "../crates/kernel_logger", features = [
+    "serial-log",
+    "vga-log",
+] }

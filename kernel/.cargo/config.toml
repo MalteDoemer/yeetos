@@ -2,14 +2,15 @@
 rustflags = [
     "-Csoft-float",
     "-Clink-arg=--entry=kernel_main",
-    "-Clink-arg=--image-base=0x00",
+    "-Clink-arg=--image-base=0xfffff00000800000",
+    
 ]
 
 [target.i686-yeetos]
 rustflags = [
     "-Csoft-float",
     "-Clink-arg=--entry=kernel_main",
-    "-Clink-arg=--image-base=0x00",
+    "-Clink-arg=--image-base=0x800000",
 ]
 
 [unstable]

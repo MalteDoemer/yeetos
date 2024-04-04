@@ -1,28 +1,19 @@
 #![no_std]
 #![no_main]
 
+mod arch;
 mod ensure_image;
-
-use core::{arch::asm, panic::PanicInfo};
+mod panic_handler;
 
 use boot_info::BootInfoHeader;
 
 #[no_mangle]
 pub extern "C" fn kernel_main(_boot_info: &BootInfoHeader, proc_id: usize) -> ! {
-    unsafe {
-        asm!("mov dx, 0x3F8", "mov al, 0x64", "out dx, al",);
-
-        asm!("1: hlt\njmp 1b", options(att_syntax));
-    }
+    arch::test();
 
     if proc_id == 0 {
         unsafe { ensure_image::test() };
     }
 
-    loop {}
-}
-
-#[panic_handler]
-pub fn panic_handler(_info: &PanicInfo) -> ! {
-    loop {}
+    arch::halt_cpu();
 }

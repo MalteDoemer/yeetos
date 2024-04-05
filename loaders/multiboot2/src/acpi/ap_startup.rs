@@ -82,14 +82,15 @@ pub fn startup_aps(acpi_tables: &AcpiTables<IdentityMapAcpiHandler>) {
         .try_into()
         .expect("local apic address to large");
 
-    for proc in processor_info.application_processors.iter() {
-        let apic_id = proc.local_apic_id.try_into().unwrap();
-
-        // Safety: this function is implemented in boot.s and assumed to be safe.
-        unsafe {
+    processor_info
+        .application_processors
+        .iter()
+        .filter(|ap| matches!(ap.state, acpi::platform::ProcessorState::WaitingForSipi))
+        .map(|ap| ap.local_apic_id.try_into().unwrap())
+        .for_each(|apic_id| unsafe {
+            // Safety: this function is implemented in boot.s and assumed to be safe.
             startup_ap(addr, apic_id);
-        }
-    }
+        });
 }
 
 #[no_mangle]

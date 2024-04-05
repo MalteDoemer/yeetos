@@ -14,8 +14,7 @@ use spin::Once;
 static INIT: Once<()> = Once::new();
 
 #[no_mangle]
-pub extern "C" fn kernel_main(_boot_info: &BootInfoHeader, _proc_id: usize) -> ! {
-
+pub extern "C" fn kernel_main(_boot_info: &BootInfoHeader, _proc_id: usize) -> ! { 
     INIT.call_once(|| {    
         kernel_logger::init();
         info!("hey from the kernel!");

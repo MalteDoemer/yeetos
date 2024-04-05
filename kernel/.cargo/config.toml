@@ -10,7 +10,8 @@ rustflags = [
 rustflags = [
     "-Csoft-float",
     "-Clink-arg=--entry=kernel_main",
-    "-Clink-arg=--image-base=0x800000",
+    "-Clink-arg=--image-base=0xC0800000",
+
 ]
 
 [unstable]

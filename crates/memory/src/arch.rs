@@ -1,7 +1,5 @@
 #[cfg(target_arch = "x86_64")]
 mod x86_64 {
-    use crate::VirtAddr;
-
     /// Base address of the kernel address space
     pub const KERNEL_BASE: usize = 0xfffff00000000000;
 
@@ -15,22 +13,10 @@ mod x86_64 {
 
     /// The number of entries in a page table.
     pub const PAGE_TABLE_ENTRIES: usize = 512;
-
-    /// Adds a fixed offset of `KERNEL_BASE` to the address.
-    pub const fn to_higher_half(addr: VirtAddr) -> VirtAddr {
-        VirtAddr::new(addr.to_inner() + KERNEL_BASE)
-    }
-
-    /// Subtracts a fixed offset of `KERNEL_BASE` from the address.
-    pub const fn to_lower_half(addr: VirtAddr) -> VirtAddr {
-        VirtAddr::new(addr.to_inner() - KERNEL_BASE)
-    }
 }
 
 #[cfg(target_arch = "x86")]
 mod x86 {
-    use crate::VirtAddr;
-
     /// Base address of the kernel address space
     pub const KERNEL_BASE: usize = 0xC0000000;
 
@@ -44,11 +30,6 @@ mod x86 {
 
     /// The number of entries in a page table.
     pub const PAGE_TABLE_ENTRIES: usize = 1024;
-
-    /// Adds a fixed offset of `KERNEL_BASE` to the address.
-    pub fn to_higher_half(addr: VirtAddr) -> VirtAddr {
-        addr + KERNEL_BASE
-    }
 }
 
 #[cfg(target_arch = "x86_64")]
@@ -56,3 +37,15 @@ pub use x86_64::*;
 
 #[cfg(target_arch = "x86")]
 pub use x86::*;
+
+use crate::VirtAddr;
+
+/// Adds a fixed offset of `KERNEL_BASE` to the address.
+pub const fn to_higher_half(addr: VirtAddr) -> VirtAddr {
+    VirtAddr::new(addr.to_inner() + KERNEL_BASE)
+}
+
+/// Subtracts a fixed offset of `KERNEL_BASE` from the address.
+pub const fn to_lower_half(addr: VirtAddr) -> VirtAddr {
+    VirtAddr::new(addr.to_inner() - KERNEL_BASE)
+}

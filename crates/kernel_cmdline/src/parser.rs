@@ -73,10 +73,14 @@ impl<'a> KernelCommandLineParser<'a> {
             }
         }
 
-        KernelCommandLine {
+        let cmd = KernelCommandLine {
             welcome,
             kernel_use_reloc,
             kernel_stack_size,
-        }
+        };
+
+        cmd.verfy();
+
+        cmd
     }
 }

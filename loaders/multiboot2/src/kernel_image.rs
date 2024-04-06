@@ -1,7 +1,6 @@
 use alloc::vec::Vec;
 use boot_info::kernel_image_info::KernelImageInfo;
 use elf::{abi::PT_LOAD, endian::LittleEndian, segment::ProgramHeader, ElfBytes, ParseError};
-use log::info;
 use memory::{to_lower_half, Page, VirtAddr, VirtualRange, KERNEL_BASE};
 
 const PHDR_EXEC: u32 = 1;
@@ -47,6 +46,7 @@ impl KernelImageProgramHeaders {
 pub struct KernelImage<'a> {
     info: KernelImageInfo,
     phdrs: KernelImageProgramHeaders,
+    kernel_stack_size: usize,
     entry_point: VirtAddr,
     elf_image: ElfBytes<'a, LittleEndian>,
 }
@@ -56,13 +56,14 @@ impl<'a> KernelImage<'a> {
     pub fn new(
         load_start_addr: VirtAddr,
         num_cores: usize,
-        data: &'a [u8],
+        kernel_stack_size: usize,
         use_reloc: bool,
+        data: &'a [u8],
     ) -> Result<Self, KernelImageError> {
         if use_reloc {
-            Self::new_reloc(load_start_addr, num_cores, data)
+            Self::new_reloc(load_start_addr, num_cores, kernel_stack_size, data)
         } else {
-            Self::new_fixed(num_cores, data)
+            Self::new_fixed(num_cores, kernel_stack_size, data)
         }
     }
 
@@ -71,16 +72,18 @@ impl<'a> KernelImage<'a> {
     pub fn new_reloc(
         load_start_addr: VirtAddr,
         num_cores: usize,
+        kernel_stack_size: usize,
         data: &'a [u8],
     ) -> Result<Self, KernelImageError> {
         let elf_image = ElfBytes::minimal_parse(data)?;
         let phdrs = Self::get_phdrs(&elf_image)?;
-        let info = Self::get_image_info(&phdrs, load_start_addr, num_cores);
+        let info = Self::get_image_info(&phdrs, load_start_addr, num_cores, kernel_stack_size);
         let entry_point = Self::get_entry_point(&elf_image, &phdrs, &info);
 
         Ok(Self {
             info,
             phdrs,
+            kernel_stack_size,
             entry_point,
             elf_image,
         })
@@ -92,16 +95,22 @@ impl<'a> KernelImage<'a> {
     /// The stacks for the cpu cores will be located before the first PT_LOAD segment.
     /// This means one has to make sure there is enough space inbetween the multiboot2 loader
     /// and the kernel.
-    pub fn new_fixed(num_cores: usize, data: &'a [u8]) -> Result<Self, KernelImageError> {
+    pub fn new_fixed(
+        num_cores: usize,
+        kernel_stack_size: usize,
+        data: &'a [u8],
+    ) -> Result<Self, KernelImageError> {
         let elf_image: ElfBytes<'a, LittleEndian> = ElfBytes::minimal_parse(data)?;
         let phdrs = Self::get_phdrs(&elf_image)?;
-        let load_start_addr = Self::get_load_start_addr_for_fixed_image(&phdrs, num_cores);
-        let info = Self::get_image_info(&phdrs, load_start_addr, num_cores);
+        let load_start_addr =
+            Self::get_load_start_addr_for_fixed_image(&phdrs, num_cores, kernel_stack_size);
+        let info = Self::get_image_info(&phdrs, load_start_addr, num_cores, kernel_stack_size);
         let entry_point = Self::get_entry_point(&elf_image, &phdrs, &info);
 
         Ok(Self {
             info,
             phdrs,
+            kernel_stack_size,
             entry_point,
             elf_image,
         })
@@ -124,10 +133,11 @@ impl<'a> KernelImage<'a> {
         phdrs: &KernelImageProgramHeaders,
         load_start_addr: VirtAddr,
         num_cores: usize,
+        kernel_stack_size: usize,
     ) -> KernelImageInfo {
         let image_base_file = phdrs.image_base();
 
-        let stack = Self::get_stack_segment(load_start_addr, num_cores);
+        let stack = Self::get_stack_segment(load_start_addr, num_cores, kernel_stack_size);
 
         let image_base_mem = stack.end().to_addr();
 
@@ -152,9 +162,13 @@ impl<'a> KernelImage<'a> {
     }
 
     /// This function computes the range of virtual memory occupied by the stacks.
-    fn get_stack_segment(load_start_addr: VirtAddr, num_cores: usize) -> VirtualRange {
+    fn get_stack_segment(
+        load_start_addr: VirtAddr,
+        num_cores: usize,
+        kernel_stack_size: usize,
+    ) -> VirtualRange {
         let stack_start = load_start_addr;
-        let stack_size = num_cores * Self::kernel_stack_size_impl();
+        let stack_size = num_cores * kernel_stack_size;
         let stack_end = stack_start + stack_size;
 
         let start_page = Page::new(stack_start);
@@ -212,10 +226,11 @@ impl<'a> KernelImage<'a> {
     fn get_load_start_addr_for_fixed_image(
         phdrs: &KernelImageProgramHeaders,
         num_cores: usize,
+        kernel_stack_size: usize,
     ) -> VirtAddr {
         let image_base_file = phdrs.image_base();
         let image_base_mem = to_lower_half(image_base_file);
-        let total_stack_size = num_cores * Self::kernel_stack_size_impl();
+        let total_stack_size = num_cores * kernel_stack_size;
 
         image_base_mem - total_stack_size
     }
@@ -276,10 +291,6 @@ impl<'a> KernelImage<'a> {
             data,
         })
     }
-
-    fn kernel_stack_size_impl() -> usize {
-        16 * 4096
-    }
 }
 
 impl<'a> KernelImage<'a> {
@@ -296,7 +307,7 @@ impl<'a> KernelImage<'a> {
     }
 
     pub fn kernel_stack_size(&self) -> usize {
-        Self::kernel_stack_size_impl()
+        self.kernel_stack_size
     }
 
     pub fn load_kernel(&self) -> Result<(), KernelImageError> {
@@ -342,11 +353,6 @@ impl<'a> KernelImage<'a> {
 
         let zero_end = segment.end().to_addr();
 
-        info!(
-            "loading segment: {:p}-{:p}-{:p}-{:p}",
-            zero_start, load_start, load_end, zero_end
-        );
-
         assert!(zero_start <= load_start && load_start <= load_end && load_end <= zero_end);
 
         // clear out any bytes before
@@ -381,8 +387,10 @@ impl<'a> KernelImage<'a> {
         relro_phdr: ProgramHeader,
         _relro_range: VirtualRange,
     ) -> Result<(), KernelImageError> {
-        // let got = self.elf_image.section_header_by_name(".got");
-        // let data_relro = self.elf_image.section_header_by_name(".data.rel.ro");
+        // only do relocations if it is necessary
+        if image_base_mem == image_base_file {
+            return Ok(());
+        }
 
         let addr_in_file = VirtAddr::new(relro_phdr.p_vaddr as usize);
         let load_start = image_base_mem + (addr_in_file - image_base_file);

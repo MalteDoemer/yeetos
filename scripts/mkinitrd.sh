@@ -1,7 +1,7 @@
 #!/bin/sh
 
 function help {
-    echo "usage $(basename $0) -o OUTPUT_FILE -k KERNEL_FILE "
+    echo "usage $(basename $0) -o OUTPUT_FILE -k KERNEL_FILE -c CMDLINE_FILE"
     exit 0
 }
 
@@ -16,24 +16,32 @@ function cleanup {
 
 trap cleanup EXIT
 
-while getopts ":o:k:h" ARG; do
+while getopts ":o:k:c:h" ARG; do
     case "$ARG" in 
         o) OUTPUT_FILE="$OPTARG" ;;
         k) KERNEL_FILE="$OPTARG" ;;
+        c) CMDLINE_FILE="$OPTARG" ;;
         h) help ;;
     esac
 done
 
 shift $(expr $OPTIND - 1 )
 
-[[ -z "${KERNEL_FILE+x}" ]] && error "kernel file must be provided"
+[[ -z "${CMDLINE_FILE+x}" ]] && error "kernel command line file must be provided (-c CMDLINE_FILE)"
 
-[[ -z "${OUTPUT_FILE+x}" ]] && error "output file must be provided" 
+[[ -z "${KERNEL_FILE+x}" ]] && error "kernel file must be provided (-k KERNEL_FILE)"
+
+[[ -z "${OUTPUT_FILE+x}" ]] && error "output file must be provided (-o OUTPUT_FILE)" 
+
 
 TEMP_DIR=$(mktemp -d)
 
 [[ ! "$TEMP_DIR" || ! -d "$TEMP_DIR" ]] && error "failed to create temp directory" 
 
 cp "$KERNEL_FILE" "$TEMP_DIR/kernel"
+
+cp "$CMDLINE_FILE" "$TEMP_DIR/cmdline"
+
+strip -dx "$TEMP_DIR/kernel"
 
 cd "$TEMP_DIR" && tar -cf "$OUTPUT_FILE" $(ls)

@@ -13,12 +13,26 @@ use spin::Once;
 
 static INIT: Once<()> = Once::new();
 
+extern "C" {
+    fn doesnt_exist();
+}
+
 #[no_mangle]
-pub extern "C" fn kernel_main(_boot_info: &BootInfoHeader, _proc_id: usize) -> ! { 
-    INIT.call_once(|| {    
+pub extern "C" fn kernel_main(_boot_info: &BootInfoHeader, proc_id: usize) -> ! {
+    INIT.call_once(|| {
         kernel_logger::init();
         info!("hey from the kernel!");
     });
 
+    let _ = INIT.wait();
+    info!("[CPU {}]: done", proc_id);
+
     arch::cpu::halt();
+}
+
+pub fn write_serial_byte(byte: u8) {
+    use x86::io::outb;
+    unsafe {
+        outb(0x3F8, byte);
+    }
 }

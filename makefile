@@ -2,12 +2,12 @@ TOP_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 OUT_DIR=$(TOP_DIR)out
 
 # configuration
-# ARCH=x86_64
-ARCH=i686
+ARCH=x86_64
+# ARCH=i686
 CONFIG=debug
 LOADER=multiboot2
-# QEMU_EXE=qemu-system-x86_64
-QEMU_EXE=qemu-system-i386
+QEMU_EXE=qemu-system-x86_64
+# QEMU_EXE=qemu-system-i386
 
 # qemu options
 MEMORY=4G
@@ -21,6 +21,8 @@ LOADER_BIN=$(LOADER_DIR)/target/$(TARGET)/$(CONFIG)/loader
 KERNEL_DIR=$(TOP_DIR)kernel
 KERNEL_BIN=$(KERNEL_DIR)/target/$(TARGET)/$(CONFIG)/kernel
 
+KERNEL_CMDLINE=$(TOP_DIR)kernel_cmdline.cfg
+
 INITRD=$(OUT_DIR)/initrd
 ISO=$(OUT_DIR)/yeetos.iso
 
@@ -32,9 +34,9 @@ $(KERNEL_BIN): FORCE
 $(LOADER_BIN): FORCE
 	@cd $(LOADER_DIR) && cargo build --target triplets/$(TARGET).json
 
-$(INITRD): $(KERNEL_BIN)
+$(INITRD): $(KERNEL_BIN) $(KERNEL_CMDLINE)
 	@mkdir -p $(OUT_DIR)
-	@$(TOP_DIR)/scripts/mkinitrd.sh -o $(INITRD) -k $(KERNEL_BIN)
+	@$(TOP_DIR)/scripts/mkinitrd.sh -o $(INITRD) -k $(KERNEL_BIN) -c $(KERNEL_CMDLINE)
 
 $(ISO): $(INITRD) $(LOADER_BIN)
 	@mkdir -p $(OUT_DIR)

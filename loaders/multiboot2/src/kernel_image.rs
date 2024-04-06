@@ -1,7 +1,8 @@
 use alloc::vec::Vec;
 use boot_info::kernel_image_info::KernelImageInfo;
 use elf::{abi::PT_LOAD, endian::LittleEndian, segment::ProgramHeader, ElfBytes, ParseError};
-use memory::{to_lower_half, Page, VirtAddr, VirtualRange};
+use log::info;
+use memory::{to_lower_half, Page, VirtAddr, VirtualRange, KERNEL_BASE};
 
 const PHDR_EXEC: u32 = 1;
 const PHDR_WRITE: u32 = 2;
@@ -51,6 +52,20 @@ pub struct KernelImage<'a> {
 }
 
 impl<'a> KernelImage<'a> {
+    /// Create a `KernelImage` struct using either `new_reloc()` or `new_fixed()` based on `use_reloc`.
+    pub fn new(
+        load_start_addr: VirtAddr,
+        num_cores: usize,
+        data: &'a [u8],
+        use_reloc: bool,
+    ) -> Result<Self, KernelImageError> {
+        if use_reloc {
+            Self::new_reloc(load_start_addr, num_cores, data)
+        } else {
+            Self::new_fixed(num_cores, data)
+        }
+    }
+
     /// Create a `KernelImage` struct that is going to be loaded at `load_start_addr`.
     /// Using this function allows for ASLR for the kernel if used with a random offset.
     pub fn new_reloc(
@@ -301,6 +316,7 @@ impl<'a> KernelImage<'a> {
 
         if let (Some(phdr), Some(range)) = (self.phdrs.relro, self.info.relro) {
             self.load_segment(image_base_mem, image_base_file, phdr, range)?;
+            self.perform_relocations(image_base_mem, image_base_file, phdr, range)?;
         }
 
         if let (Some(phdr), Some(range)) = (self.phdrs.data, self.info.data) {
@@ -325,6 +341,11 @@ impl<'a> KernelImage<'a> {
         let load_end = load_start + program_header.p_filesz as usize;
 
         let zero_end = segment.end().to_addr();
+
+        info!(
+            "loading segment: {:p}-{:p}-{:p}-{:p}",
+            zero_start, load_start, load_end, zero_end
+        );
 
         assert!(zero_start <= load_start && load_start <= load_end && load_end <= zero_end);
 
@@ -352,4 +373,45 @@ impl<'a> KernelImage<'a> {
 
         Ok(())
     }
+
+    fn perform_relocations(
+        &self,
+        image_base_mem: VirtAddr,
+        image_base_file: VirtAddr,
+        relro_phdr: ProgramHeader,
+        _relro_range: VirtualRange,
+    ) -> Result<(), KernelImageError> {
+        // let got = self.elf_image.section_header_by_name(".got");
+        // let data_relro = self.elf_image.section_header_by_name(".data.rel.ro");
+
+        let addr_in_file = VirtAddr::new(relro_phdr.p_vaddr as usize);
+        let load_start = image_base_mem + (addr_in_file - image_base_file);
+        let load_end = load_start + relro_phdr.p_filesz as usize;
+
+        let mut ptr = load_start.as_ptr_mut::<usize>();
+        let end = load_end.as_ptr_mut::<usize>();
+
+        assert!(ptr <= end);
+
+        while ptr < end {
+            unsafe {
+                let mut data = core::ptr::read(ptr);
+
+                if is_higher_half_address(data) {
+                    let addr = VirtAddr::new(data);
+                    let reloc = image_base_mem + (addr - image_base_file);
+                    data = reloc.to_inner();
+                }
+
+                core::ptr::write(ptr, data);
+                ptr = ptr.add(1);
+            }
+        }
+
+        Ok(())
+    }
+}
+
+fn is_higher_half_address(addr: usize) -> bool {
+    addr >= KERNEL_BASE
 }

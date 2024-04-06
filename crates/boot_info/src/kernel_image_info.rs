@@ -1,5 +1,6 @@
 use memory::{VirtAddr, VirtualRange};
 
+#[derive(Debug)]
 pub struct KernelImageInfo {
     pub stack: VirtualRange,
     pub rodata: Option<VirtualRange>,

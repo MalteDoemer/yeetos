@@ -63,28 +63,30 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
     // Get the INITRD module loaded by the multiboot2 loader
     let initrd = Initrd::from_multiboot_info(&mboot_info).expect("initrd module not found");
 
+    let cmdline_data = initrd
+        .file_by_name("cmdline")
+        .expect("cmdline file not found")
+        .data_as_str()
+        .expect("kernel command line not valid utf-8");
+
+    let kernel_cmdline = kernel_cmdline::KernelCommandLineParser::new(cmdline_data).parse();
+
     // Search for the kernel file in the INITRD
     let kernel_file = initrd
         .file_by_name("kernel")
         .expect("kernel file not found");
 
-    // Create the KernelImage struct:
-    // Normally new_reloc is used to create the kernel image.
-    // However when debugging new_fixed is used so that gdb works correctly.
+    // Create the KernelImage struct.
+    // Relocation will be used based on the kernel command line argument `kernel_use_reloc` which defaults to true.
+    // Relocation can be disabled in order to facilitate debugging with gdb.
     // Note: this function does not yet load the kernel.
-    #[cfg(not(debug_assertions))]
-    let kernel_image = KernelImage::new_reloc(
+    let kernel_image = KernelImage::new(
         initrd.end_addr(),
         acpi::number_of_cores(&acpi_tables),
         kernel_file.data(),
+        kernel_cmdline.kernel_use_reloc(),
     )
     .expect("unable to parse the kernel elf image");
-    #[cfg(debug_assertions)]
-    let kernel_image =
-        KernelImage::new_fixed(acpi::number_of_cores(&acpi_tables), kernel_file.data())
-            .expect("unable to parse the kernel elf image");
-
-
 
     let kernel_image_info = kernel_image.kernel_image_info();
 

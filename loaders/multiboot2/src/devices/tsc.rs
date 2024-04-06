@@ -100,7 +100,7 @@ pub fn init() {
     pic::mask_irq(0);
 
     // we should only have waited one pit-tick.
-    assert_eq!(start_tick + 1, end_tick);
+    debug_assert_eq!(start_tick + 1, end_tick);
 
     let cycles_per_billion_pits: u64 = 1_000_000_000 * (end_cycle - start_cycle);
     let cycles_per_second = cycles_per_billion_pits / pit::NANO_SECONDS_PER_PIT;

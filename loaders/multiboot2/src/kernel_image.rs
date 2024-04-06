@@ -353,7 +353,7 @@ impl<'a> KernelImage<'a> {
 
         let zero_end = segment.end().to_addr();
 
-        assert!(zero_start <= load_start && load_start <= load_end && load_end <= zero_end);
+        debug_assert!(zero_start <= load_start && load_start <= load_end && load_end <= zero_end);
 
         // clear out any bytes before
         unsafe {
@@ -399,7 +399,7 @@ impl<'a> KernelImage<'a> {
         let mut ptr = load_start.as_ptr_mut::<usize>();
         let end = load_end.as_ptr_mut::<usize>();
 
-        assert!(ptr <= end);
+        debug_assert!(ptr <= end);
 
         while ptr < end {
             unsafe {

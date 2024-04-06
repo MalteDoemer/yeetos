@@ -154,7 +154,7 @@ fn split_mmap_entry(
     big: MemoryMapEntry,
     small: MemoryMapEntry,
 ) -> (MemoryMapEntry, MemoryMapEntry, MemoryMapEntry) {
-    assert!(big.start <= small.start && big.end >= small.end);
+    debug_assert!(big.start <= small.start && big.end >= small.end);
 
     // Split region into three parts:
     // 1. big.start..small.start

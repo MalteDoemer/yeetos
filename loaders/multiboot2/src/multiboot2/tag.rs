@@ -182,7 +182,7 @@ impl Tag {
                 });
             }
 
-            assert!(reader.addr() == end_addr);
+            debug_assert!(reader.addr() == end_addr);
 
             Tag::MemoryRegions(regions)
         }

@@ -82,12 +82,20 @@ pub fn startup_aps(acpi_tables: &AcpiTables<IdentityMapAcpiHandler>) {
         .try_into()
         .expect("local apic address to large");
 
+    let num_cores = processor_info.application_processors.len() + 1;
+
     processor_info
         .application_processors
         .iter()
         .filter(|ap| matches!(ap.state, acpi::platform::ProcessorState::WaitingForSipi))
         .map(|ap| ap.local_apic_id.try_into().unwrap())
         .for_each(|apic_id| unsafe {
+            // We only set up `num_cores` of kernel stacks and we use
+            // the apic_id in boot.s to load a stack pointer.
+            // Thus if the apic_id is bigger than num_cores (for whatever reason)
+            // we will get memory corruption.
+            assert!(apic_id < num_cores);
+
             // Safety: this function is implemented in boot.s and assumed to be safe.
             startup_ap(addr, apic_id);
         });
@@ -112,8 +120,6 @@ pub extern "C" fn rust_entry_ap(ap_id: usize) -> ! {
 }
 
 pub fn make_jump_to_kernel(processor_id: usize, entry_point_addr: VirtAddr) -> ! {
-    validate_processor_id(processor_id);
-
     let boot_info = boot_info::get_boot_info_addr();
 
     // calculate stack
@@ -129,10 +135,4 @@ pub fn make_jump_to_kernel(processor_id: usize, entry_point_addr: VirtAddr) -> !
             stack_addr.to_inner(),
         )
     };
-}
-
-/// This function validates that processor_id's are in range 0..num_cores
-fn validate_processor_id(processor_id: usize) {
-    let num_cores = AP_COUNT.load(Ordering::SeqCst) + 1;
-    assert!(processor_id < num_cores);
 }

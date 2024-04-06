@@ -26,13 +26,21 @@ KERNEL_CMDLINE=$(TOP_DIR)kernel_cmdline.cfg
 INITRD=$(OUT_DIR)/initrd
 ISO=$(OUT_DIR)/yeetos.iso
 
+ifeq ($(CONFIG), debug)
+PROFILE := dev
+endif
+
+ifeq ($(CONFIG), release)
+PROFILE := release
+endif
+
 all: $(ISO)
 
 $(KERNEL_BIN): FORCE
-	@cd $(KERNEL_DIR) && cargo build --target triplets/$(TARGET).json
+	@cd $(KERNEL_DIR) && cargo build --profile=$(PROFILE) --target triplets/$(TARGET).json
 
 $(LOADER_BIN): FORCE
-	@cd $(LOADER_DIR) && cargo build --target triplets/$(TARGET).json
+	@cd $(LOADER_DIR) && cargo build --profile=$(PROFILE) --target triplets/$(TARGET).json
 
 $(INITRD): $(KERNEL_BIN) $(KERNEL_CMDLINE)
 	@mkdir -p $(OUT_DIR)

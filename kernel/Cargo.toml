@@ -7,6 +7,7 @@ edition = "2021"
 
 [profile.dev]
 overflow-checks = true
+lto = "fat"
 opt-level = 3
 
 [profile.release]

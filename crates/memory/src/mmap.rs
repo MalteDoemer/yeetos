@@ -1,9 +1,9 @@
-use crate::{paddr, PhysAddr};
+use crate::{paddr, PhysAddr, PhysicalRange};
 
 /// Maximum number of memory map entries
 pub const MEMORY_MAP_ENTRIES: usize = 64;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MemoryMapEntryKind {
     /// This entry is unused
     None,
@@ -44,11 +44,7 @@ impl MemoryMapEntry {
     }
 
     pub fn new(start: PhysAddr, end: PhysAddr, kind: MemoryMapEntryKind) -> Self {
-        Self {
-            start,
-            end,
-            kind,
-        }
+        Self { start, end, kind }
     }
 
     pub fn size(&self) -> paddr::Inner {
@@ -69,6 +65,62 @@ impl MemoryMap {
     pub const fn new() -> Self {
         Self {
             entries: [MemoryMapEntry::empty(); MEMORY_MAP_ENTRIES],
+        }
+    }
+
+    pub fn entries(&self) -> impl Iterator<Item = &MemoryMapEntry> {
+        self.entries
+            .iter()
+            .filter(|entry| entry.kind != MemoryMapEntryKind::None)
+    }
+
+    pub fn first(&self) -> &MemoryMapEntry {
+        self.entries().nth(0).expect("memory map is empty")
+    }
+
+    pub fn last(&self) -> &MemoryMapEntry {
+        let num_entries = self.entries().count();
+
+        self.entries()
+            .nth(num_entries - 1)
+            .expect("memory map is empty")
+    }
+
+    pub fn start_addr(&self) -> PhysAddr {
+        self.first().start
+    }
+
+    pub fn end_addr(&self) -> PhysAddr {
+        self.last().end
+    }
+
+    pub fn is_covered(&self, range: PhysicalRange) -> bool {
+        let start = self.start_addr();
+        let end = self.end_addr();
+
+        start <= range.start().to_addr() && end >= range.end().to_addr()
+    }
+
+    pub fn entries_for_range(
+        &self,
+        range: PhysicalRange,
+    ) -> Option<impl Iterator<Item = &MemoryMapEntry>> {
+        if self.is_covered(range) {
+            let iter = self
+                .entries()
+                .skip_while(move |entry| entry.end <= range.start().to_addr())
+                .take_while(move |entry| entry.start < range.end().to_addr());
+            Some(iter)
+        } else {
+            None
+        }
+    }
+
+    pub fn is_usable(&self, range: PhysicalRange) -> bool {
+        if let Some(mut iter) = self.entries_for_range(range) {
+            iter.all(|entry| entry.kind == MemoryMapEntryKind::Free)
+        } else {
+            false
         }
     }
 }

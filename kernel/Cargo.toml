@@ -13,6 +13,10 @@ opt-level = 1
 [profile.release]
 overflow-checks = true
 
+
+########################################
+# Dependencies for all architectures   #
+########################################
 [dependencies]
 spin = "0.9.8"
 log = "0.4.21"
@@ -20,17 +24,27 @@ log = "0.4.21"
 memory = { path = "../crates/memory" }
 boot_info = { path = "../crates/boot_info" }
 
+[dependencies.linked_list_allocator]
+version = "0.10.5"
+default-features = false
 
+
+########################################
+# Dependencies for architecture x86    #
+########################################
 [target.'cfg(target_arch = "x86")'.dependencies]
 x86 = "0.52.0"
-kernel_logger = { path = "../crates/kernel_logger", features = [
-    "serial-log",
-    "vga-log",
-] }
 
+[target.'cfg(target_arch = "x86")'.dependencies.kernel_logger]
+path = "../crates/kernel_logger"
+features = ["serial-log", "vga-log"]
+
+########################################
+# Dependencies for architecture x86_64 #
+########################################
 [target.'cfg(target_arch = "x86_64")'.dependencies]
 x86 = "0.52.0"
-kernel_logger = { path = "../crates/kernel_logger", features = [
-    "serial-log",
-    "vga-log",
-] }
+
+[target.'cfg(target_arch = "x86_64")'.dependencies.kernel_logger]
+path = "../crates/kernel_logger"
+features = ["serial-log", "vga-log"]

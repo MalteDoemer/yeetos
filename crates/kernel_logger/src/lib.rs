@@ -34,7 +34,7 @@ impl Log for KernelLogger {
     fn flush(&self) {}
 }
 
-pub fn init() {
+pub fn init_once() {
     let _ = log::set_logger(&KernelLogger);
     log::set_max_level(LevelFilter::Trace);
 }

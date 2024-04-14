@@ -2,12 +2,15 @@
 #![no_main]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![allow(dead_code)]
-// Used for init_allocator.rs
-#![feature(allocator_api)]
+// needed for the heap allocator
+#![feature(alloc_error_handler)]
 
 mod arch;
+mod heap;
 mod kresult;
 mod panic_handler;
+
+extern crate alloc;
 
 use boot_info::BootInfoHeader;
 use log::info;
@@ -20,17 +23,28 @@ extern "C" {
 }
 
 #[no_mangle]
-pub extern "C" fn kernel_main(_boot_info: &BootInfoHeader, proc_id: usize) -> ! {
-    INIT.call_once(|| {
-        kernel_logger::init();
-
-        arch::cpu::features::verify();
-    });
-
+pub extern "C" fn kernel_main(boot_info: &BootInfoHeader, proc_id: usize) -> ! {
+    // perform one-time initialization on a single core
+    INIT.call_once(|| init_once(boot_info));
     let _ = INIT.wait();
-    info!("[CPU {}]: done", proc_id);
 
+    // perform initialization on every core
+    init_all(boot_info, proc_id);
+
+    info!("[CPU {}]: done", proc_id);
     arch::cpu::halt();
+}
+
+fn init_once(boot_info: &BootInfoHeader) {
+    kernel_logger::init_once();
+
+    heap::init_once(boot_info);
+
+    
+}
+
+fn init_all(_boot_info: &BootInfoHeader, _proc_id: usize) {
+    arch::cpu::features::verify();
 }
 
 pub fn write_serial_byte(byte: u8) {

@@ -6,7 +6,6 @@
 #![feature(allocator_api)]
 
 mod arch;
-mod init_allocator;
 mod kresult;
 mod panic_handler;
 
@@ -21,13 +20,11 @@ extern "C" {
 }
 
 #[no_mangle]
-pub extern "C" fn kernel_main(boot_info: &BootInfoHeader, proc_id: usize) -> ! {
+pub extern "C" fn kernel_main(_boot_info: &BootInfoHeader, proc_id: usize) -> ! {
     INIT.call_once(|| {
         kernel_logger::init();
 
         arch::cpu::features::verify();
-
-        init_allocator::init(boot_info);
     });
 
     let _ = INIT.wait();

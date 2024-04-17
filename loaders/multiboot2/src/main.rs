@@ -84,6 +84,7 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
         initrd.end_addr(),
         acpi::number_of_cores(&acpi_tables),
         kernel_cmdline.kernel_stack_size(),
+        4 * 1024 * 1024,
         kernel_cmdline.kernel_use_reloc(),
         kernel_file.data(),
     )

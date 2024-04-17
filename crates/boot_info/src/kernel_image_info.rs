@@ -7,6 +7,7 @@ pub struct KernelImageInfo {
     pub code: VirtualRange,
     pub relro: Option<VirtualRange>,
     pub data: Option<VirtualRange>,
+    pub heap: VirtualRange,
 }
 
 impl KernelImageInfo {
@@ -17,6 +18,7 @@ impl KernelImageInfo {
             code: VirtualRange::zero(),
             relro: None,
             data: None,
+            heap: VirtualRange::zero(),
         }
     }
 
@@ -29,13 +31,7 @@ impl KernelImageInfo {
     }
 
     pub fn end(&self) -> VirtAddr {
-        if let Some(data) = self.data {
-            data.end().to_addr()
-        } else if let Some(relro) = self.relro {
-            relro.end().to_addr()
-        } else {
-            self.code.end().to_addr()
-        }
+        self.heap.end().to_addr()
     }
 
     pub fn size_in_bytes(&self) -> usize {

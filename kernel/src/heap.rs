@@ -6,7 +6,8 @@ use core::{
 
 use boot_info::BootInfoHeader;
 use linked_list_allocator::Heap;
-use memory::{to_lower_half, Frame, Page, PhysicalRange, VirtualRange};
+use log::info;
+use memory::VirtualRange;
 use spin::{Mutex, Once};
 
 #[global_allocator]
@@ -16,6 +17,12 @@ static INIT: Once<()> = Once::new();
 
 struct HeapAllocator {
     inner: Mutex<Heap>,
+}
+
+struct HeapStats {
+    used: usize,
+    free: usize,
+    total: usize,
 }
 
 impl HeapAllocator {
@@ -29,9 +36,15 @@ impl HeapAllocator {
         self.inner.lock().init_from_slice(mem);
     }
 
-    // pub fn is_init(&self) -> bool {
-    //     self.inner.lock().free()
-    // }
+    fn stats(&self) -> HeapStats {
+        let heap = self.inner.lock();
+
+        let used = heap.used();
+        let free = heap.free();
+        let total = heap.size();
+
+        HeapStats { used, free, total }
+    }
 }
 
 unsafe impl GlobalAlloc for HeapAllocator {
@@ -60,13 +73,18 @@ fn alloc_error_handler(layout: Layout) -> ! {
 /// Initialize the kernel heap.
 pub fn init(boot_info: &BootInfoHeader) {
     INIT.call_once(|| {
-        let range =
-            get_heap_range(boot_info).expect("not enough memory available for the heap allocator");
+        let range = boot_info.kernel_image_info.heap;
 
         // Safety: range is assumed to be accessible memory with a 'static lifetime.
         unsafe {
             init_unchecked(range);
         }
+
+        let total = ALLOCATOR.stats().total;
+        info!(
+            "the kernel heap has a size of {} MiB",
+            total / (1024 * 1024)
+        );
     });
 }
 
@@ -88,39 +106,4 @@ unsafe fn init_unchecked(heap_memory: VirtualRange) {
         unsafe { core::slice::from_raw_parts_mut(heap_start as *mut MaybeUninit<u8>, heap_size) };
 
     ALLOCATOR.init(heap_mem);
-}
-
-/// This function calculates the amount of heap memory needed by the kernel
-/// and returns a `VirtualRange` from the end of the kernel image with the
-/// calcualted and checked amount of heap memory.
-///
-/// # Returns
-/// - `Some(range)` the virtual range for the heap memory
-/// - `None` if the required memory is not available
-/// # Note
-/// After the initialization phase the kernel should no longer use the heap
-/// allocator. The heap is only there to allocate certain structures during
-/// init. Thus we can theoretically calculate the exact amount of memory needed.
-/// But for now its just a hardcoded value to get things going.
-pub fn get_heap_range(boot_info: &BootInfoHeader) -> Option<VirtualRange> {
-    let heap_start = boot_info.kernel_image_info.end();
-    let heap_size = 4 * 1024 * 1024;
-    let heap_end = heap_start + heap_size;
-
-    let heap_virt_range =
-        VirtualRange::new_diff(Page::new(heap_start), Page::new(heap_end.page_align_up()));
-
-    let heap_start_pyhs = to_lower_half(heap_start).to_phys();
-    let heap_end_phys = to_lower_half(heap_end).to_phys();
-    let heap_phys_range = PhysicalRange::new_diff(
-        Frame::new(heap_start_pyhs),
-        Frame::new(heap_end_phys.frame_align_up()),
-    );
-
-    // Now we check if the memory we need is actually there.
-    if boot_info.memory_map.is_usable(heap_phys_range) {
-        Some(heap_virt_range)
-    } else {
-        None
-    }
 }

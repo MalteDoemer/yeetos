@@ -1,7 +1,7 @@
 use alloc::vec::Vec;
 use boot_info::kernel_image_info::KernelImageInfo;
 use elf::{abi::PT_LOAD, endian::LittleEndian, segment::ProgramHeader, ElfBytes, ParseError};
-use memory::{to_lower_half, Page, VirtAddr, VirtualRange, KERNEL_BASE};
+use memory::{to_lower_half, Page, VirtAddr, VirtualRange, KERNEL_BASE, PAGE_SIZE};
 
 const PHDR_EXEC: u32 = 1;
 const PHDR_WRITE: u32 = 2;
@@ -57,13 +57,20 @@ impl<'a> KernelImage<'a> {
         load_start_addr: VirtAddr,
         num_cores: usize,
         kernel_stack_size: usize,
+        kernel_heap_size: usize,
         use_reloc: bool,
         data: &'a [u8],
     ) -> Result<Self, KernelImageError> {
         if use_reloc {
-            Self::new_reloc(load_start_addr, num_cores, kernel_stack_size, data)
+            Self::new_reloc(
+                load_start_addr,
+                num_cores,
+                kernel_stack_size,
+                kernel_heap_size,
+                data,
+            )
         } else {
-            Self::new_fixed(num_cores, kernel_stack_size, data)
+            Self::new_fixed(num_cores, kernel_stack_size, kernel_heap_size, data)
         }
     }
 
@@ -73,11 +80,18 @@ impl<'a> KernelImage<'a> {
         load_start_addr: VirtAddr,
         num_cores: usize,
         kernel_stack_size: usize,
+        kernel_heap_size: usize,
         data: &'a [u8],
     ) -> Result<Self, KernelImageError> {
         let elf_image = ElfBytes::minimal_parse(data)?;
         let phdrs = Self::get_phdrs(&elf_image)?;
-        let info = Self::get_image_info(&phdrs, load_start_addr, num_cores, kernel_stack_size);
+        let info = Self::get_image_info(
+            &phdrs,
+            load_start_addr,
+            num_cores,
+            kernel_stack_size,
+            kernel_heap_size,
+        );
         let entry_point = Self::get_entry_point(&elf_image, &phdrs, &info);
 
         Ok(Self {
@@ -98,13 +112,20 @@ impl<'a> KernelImage<'a> {
     pub fn new_fixed(
         num_cores: usize,
         kernel_stack_size: usize,
+        kernel_heap_size: usize,
         data: &'a [u8],
     ) -> Result<Self, KernelImageError> {
         let elf_image: ElfBytes<'a, LittleEndian> = ElfBytes::minimal_parse(data)?;
         let phdrs = Self::get_phdrs(&elf_image)?;
         let load_start_addr =
             Self::get_load_start_addr_for_fixed_image(&phdrs, num_cores, kernel_stack_size);
-        let info = Self::get_image_info(&phdrs, load_start_addr, num_cores, kernel_stack_size);
+        let info = Self::get_image_info(
+            &phdrs,
+            load_start_addr,
+            num_cores,
+            kernel_stack_size,
+            kernel_heap_size,
+        );
         let entry_point = Self::get_entry_point(&elf_image, &phdrs, &info);
 
         Ok(Self {
@@ -134,6 +155,7 @@ impl<'a> KernelImage<'a> {
         load_start_addr: VirtAddr,
         num_cores: usize,
         kernel_stack_size: usize,
+        kernel_heap_size: usize,
     ) -> KernelImageInfo {
         let image_base_file = phdrs.image_base();
 
@@ -152,12 +174,15 @@ impl<'a> KernelImage<'a> {
         let data =
             Self::get_optional_segment_from_phdr(phdrs.data, image_base_file, image_base_mem);
 
+        let heap = Self::get_heap_segment(kernel_heap_size, code, relro, data);
+
         KernelImageInfo {
             stack,
             rodata,
             code,
             relro,
             data,
+            heap,
         }
     }
 
@@ -173,6 +198,28 @@ impl<'a> KernelImage<'a> {
 
         let start_page = Page::new(stack_start);
         let end_page = Page::new(stack_end.page_align_up_checked().unwrap());
+
+        VirtualRange::new_diff(start_page, end_page)
+    }
+
+    fn get_heap_segment(
+        kernel_heap_size: usize,
+        code: VirtualRange,
+        relro: Option<VirtualRange>,
+        data: Option<VirtualRange>,
+    ) -> VirtualRange {
+        let heap_start = if let Some(data) = data {
+            data.end().to_addr()
+        } else if let Some(relro) = relro {
+            relro.end().to_addr()
+        } else {
+            code.end().to_addr()
+        };
+
+        let heap_end = heap_start + kernel_heap_size;
+
+        let start_page = Page::new(heap_start);
+        let end_page = Page::new(heap_end.page_align_up_checked().unwrap());
 
         VirtualRange::new_diff(start_page, end_page)
     }
@@ -314,10 +361,15 @@ impl<'a> KernelImage<'a> {
         let image_base_file = self.phdrs.image_base();
         let image_base_mem = self.info.image_base();
 
+        // Note: we cannot clear out the stack memory here
+        // as the AP's are already started and using the stack area.
+
+        // load rodata segment if necessary
         if let (Some(phdr), Some(range)) = (self.phdrs.rodata, self.info.rodata) {
             self.load_segment(image_base_mem, image_base_file, phdr, range)?;
         }
 
+        // load code segment
         self.load_segment(
             image_base_mem,
             image_base_file,
@@ -325,16 +377,30 @@ impl<'a> KernelImage<'a> {
             self.info.code,
         )?;
 
+        // load relro segment if necessary
         if let (Some(phdr), Some(range)) = (self.phdrs.relro, self.info.relro) {
             self.load_segment(image_base_mem, image_base_file, phdr, range)?;
             self.perform_relocations(image_base_mem, image_base_file, phdr, range)?;
         }
 
+        // load data segment if necessary
         if let (Some(phdr), Some(range)) = (self.phdrs.data, self.info.data) {
             self.load_segment(image_base_mem, image_base_file, phdr, range)?;
         }
 
+        // clear out heap memory
+        self.clear_segment(self.info.heap);
+
         Ok(())
+    }
+
+    fn clear_segment(&self, segment: VirtualRange) {
+        let zero_start = segment.start().to_addr().as_ptr_mut::<u8>();
+        let size_in_bytes = segment.num_pages() * PAGE_SIZE;
+
+        unsafe {
+            core::ptr::write_bytes(zero_start, 0, size_in_bytes);
+        }
     }
 
     fn load_segment(

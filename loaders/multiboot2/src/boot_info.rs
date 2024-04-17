@@ -65,6 +65,7 @@ fn get_kernel_image_info(kernel_image_info: &KernelImageInfo) -> KernelImageInfo
         code: translate_range_to_higher_half(kernel_image_info.code),
         relro: translate_optional_range_to_higher_half(kernel_image_info.relro),
         data: translate_optional_range_to_higher_half(kernel_image_info.data),
+        heap: translate_range_to_higher_half(kernel_image_info.heap),
     }
 }
 

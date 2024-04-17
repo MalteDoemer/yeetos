@@ -34,7 +34,10 @@ impl Log for KernelLogger {
     fn flush(&self) {}
 }
 
-pub fn init_once() {
+pub fn init() {
+    // Note: it is not a problem to call set_logger on multiple cores
+    // as only the first call will set the logger and subsequent calls
+    // will return an error which is ignored.
     let _ = log::set_logger(&KernelLogger);
     log::set_max_level(LevelFilter::Trace);
 }

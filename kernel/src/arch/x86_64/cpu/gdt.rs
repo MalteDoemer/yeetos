@@ -1,11 +1,9 @@
-use memory::VirtAddr;
 use x86::{
-    bits64::{segmentation::Descriptor64, task::TaskStateSegment},
+    bits64::segmentation::Descriptor64,
     dtables::{lgdt, DescriptorTablePointer},
     segmentation::{
         load_cs, load_ds, load_es, load_ss, BuildDescriptor, CodeSegmentType, DataSegmentType,
-        Descriptor, DescriptorBuilder, GateDescriptorBuilder, SegmentDescriptorBuilder,
-        SegmentSelector,
+        Descriptor, DescriptorBuilder, SegmentDescriptorBuilder, SegmentSelector,
     },
     Ring,
 };
@@ -64,14 +62,8 @@ impl GlobalDescriptorTable {
         }
     }
 
-    pub fn set_tss_desc(&mut self, tss_addr: VirtAddr) {
-        let base = tss_addr.to_inner() as u64;
-        let limit = core::mem::size_of::<TaskStateSegment>() as u64;
-
-        self.tss_desc =
-            <DescriptorBuilder as GateDescriptorBuilder<u64>>::tss_descriptor(base, limit, true)
-                .present()
-                .finish();
+    pub fn set_tss_desc(&mut self, tss_desc: Descriptor64) {
+        self.tss_desc = tss_desc;
     }
 
     pub unsafe fn load(&self) {
@@ -82,7 +74,7 @@ impl GlobalDescriptorTable {
     }
 }
 
-pub(super) fn init_all() {
+pub(super) fn init() {
     let local = local::get().borrow();
 
     // Safety: it is assumed that the GDT is correctly set up.

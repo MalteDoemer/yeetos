@@ -250,11 +250,9 @@ impl InterruptDescriptorTable {
 
 static IDT: Once<InterruptDescriptorTable> = Once::new();
 
-pub(super) fn init_once() {
+pub(super) fn init() {
     IDT.call_once(|| InterruptDescriptorTable::new());
-}
 
-pub(super) fn init_all() {
     // Safety: it is assumed that the IDT is correctly set up.
     unsafe {
         IDT.wait().load();

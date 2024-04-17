@@ -7,10 +7,12 @@ use core::{
 use boot_info::BootInfoHeader;
 use linked_list_allocator::Heap;
 use memory::{to_lower_half, Frame, Page, PhysicalRange, VirtualRange};
-use spin::Mutex;
+use spin::{Mutex, Once};
 
 #[global_allocator]
 static ALLOCATOR: HeapAllocator = HeapAllocator::empty();
+
+static INIT: Once<()> = Once::new();
 
 struct HeapAllocator {
     inner: Mutex<Heap>,
@@ -26,6 +28,10 @@ impl HeapAllocator {
     pub fn init(&self, mem: &'static mut [MaybeUninit<u8>]) {
         self.inner.lock().init_from_slice(mem);
     }
+
+    // pub fn is_init(&self) -> bool {
+    //     self.inner.lock().free()
+    // }
 }
 
 unsafe impl GlobalAlloc for HeapAllocator {
@@ -51,6 +57,19 @@ fn alloc_error_handler(layout: Layout) -> ! {
     panic!("failed to allocate: {:?}", layout);
 }
 
+/// Initialize the kernel heap.
+pub fn init(boot_info: &BootInfoHeader) {
+    INIT.call_once(|| {
+        let range =
+            get_heap_range(boot_info).expect("not enough memory available for the heap allocator");
+
+        // Safety: range is assumed to be accessible memory with a 'static lifetime.
+        unsafe {
+            init_unchecked(range);
+        }
+    });
+}
+
 /// Initialize the kernel heap from memory in `heap_memory`.
 ///
 /// # Safety
@@ -69,20 +88,6 @@ unsafe fn init_unchecked(heap_memory: VirtualRange) {
         unsafe { core::slice::from_raw_parts_mut(heap_start as *mut MaybeUninit<u8>, heap_size) };
 
     ALLOCATOR.init(heap_mem);
-}
-
-/// Initialize the kernel heap.
-///
-/// # Note
-/// This function *must* only be called once.
-pub fn init_once(boot_info: &BootInfoHeader) {
-    let range =
-        get_heap_range(boot_info).expect("not enough memory available for the heap allocator");
-
-    // Safety: range is assumed to be accessible memory with a 'static lifetime.
-    unsafe {
-        init_unchecked(range);
-    }
 }
 
 /// This function calculates the amount of heap memory needed by the kernel

@@ -51,7 +51,7 @@ impl Local {
     }
 }
 
-pub(super) fn init_all(proc_id: usize) {
+pub(super) fn init(proc_id: usize) {
     let mut local = Box::new(LocalWrapper {
         self_ref: NonNull::dangling(),
         local: RefCell::new(Local::new(proc_id)),

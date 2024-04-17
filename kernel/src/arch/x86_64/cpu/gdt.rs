@@ -9,7 +9,7 @@ use x86::{
 };
 
 use super::local;
-
+pub const NULL_SEL: SegmentSelector = SegmentSelector::new(0, Ring::Ring0);
 pub const KERNEL_CODE_SEL: SegmentSelector = SegmentSelector::new(1, Ring::Ring0);
 pub const KERNEL_DATA_SEL: SegmentSelector = SegmentSelector::new(2, Ring::Ring0);
 pub const USER_CODE_SEL: SegmentSelector = SegmentSelector::new(3, Ring::Ring3);

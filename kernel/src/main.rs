@@ -2,8 +2,12 @@
 #![no_main]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![allow(dead_code)]
+// needed for gs_deref!()
+#![feature(asm_const)]
 // needed for the heap allocator
 #![feature(alloc_error_handler)]
+// needed for idt.rs
+#![feature(abi_x86_interrupt)]
 
 mod arch;
 mod heap;
@@ -40,11 +44,13 @@ fn init_once(boot_info: &BootInfoHeader) {
 
     heap::init_once(boot_info);
 
-    
+    arch::cpu::init_once();
 }
 
-fn init_all(_boot_info: &BootInfoHeader, _proc_id: usize) {
+fn init_all(_boot_info: &BootInfoHeader, proc_id: usize) {
     arch::cpu::features::verify();
+
+    arch::cpu::init_all(proc_id);
 }
 
 pub fn write_serial_byte(byte: u8) {

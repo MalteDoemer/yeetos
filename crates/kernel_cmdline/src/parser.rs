@@ -56,27 +56,33 @@ impl<'a> KernelCommandLineParser<'a> {
 
     pub fn parse(&self) -> KernelCommandLine {
         let mut welcome = None;
-        let mut kernel_use_reloc = None;
-        let mut kernel_stack_size = None;
+        let mut use_reloc = None;
+        let mut stack_size = None;
+        let mut initial_heap_size = None;
 
         for keyvalue in self.keyvalue_pairs() {
             if keyvalue.key == "welcome" {
                 welcome = Some(());
             }
 
-            if keyvalue.key == "kernel_use_reloc" {
-                kernel_use_reloc = keyvalue.get();
+            if keyvalue.key == "use_reloc" {
+                use_reloc = keyvalue.get();
             }
 
-            if keyvalue.key == "kernel_stack_size" {
-                kernel_stack_size = keyvalue.get();
+            if keyvalue.key == "stack_size" {
+                stack_size = keyvalue.get();
+            }
+
+            if keyvalue.key == "initial_heap_size" {
+                initial_heap_size = keyvalue.get();
             }
         }
 
         let cmd = KernelCommandLine {
             welcome,
-            kernel_use_reloc,
-            kernel_stack_size,
+            use_reloc,
+            stack_size,
+            initial_heap_size,
         };
 
         cmd.verfy();

@@ -83,9 +83,9 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
     let kernel_image = KernelImage::new(
         initrd.end_addr(),
         acpi::number_of_cores(&acpi_tables),
-        kernel_cmdline.kernel_stack_size(),
-        4 * 1024 * 1024,
-        kernel_cmdline.kernel_use_reloc(),
+        kernel_cmdline.stack_size(),
+        kernel_cmdline.initial_heap_size(),
+        kernel_cmdline.use_reloc(),
         kernel_file.data(),
     )
     .expect("unable to parse the kernel elf image");

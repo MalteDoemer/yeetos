@@ -1,14 +1,14 @@
+use memory::VirtAddr;
 use x86::{
     bits64::segmentation::Descriptor64,
     dtables::{lgdt, DescriptorTablePointer},
     segmentation::{
-        load_cs, load_ds, load_es, load_ss, BuildDescriptor, CodeSegmentType, DataSegmentType,
-        Descriptor, DescriptorBuilder, SegmentDescriptorBuilder, SegmentSelector,
+        BuildDescriptor, CodeSegmentType, DataSegmentType, Descriptor, DescriptorBuilder,
+        GateDescriptorBuilder, SegmentDescriptorBuilder, SegmentSelector,
     },
     Ring,
 };
 
-use super::local;
 pub const NULL_SEL: SegmentSelector = SegmentSelector::new(0, Ring::Ring0);
 pub const KERNEL_CODE_SEL: SegmentSelector = SegmentSelector::new(1, Ring::Ring0);
 pub const KERNEL_DATA_SEL: SegmentSelector = SegmentSelector::new(2, Ring::Ring0);
@@ -52,18 +52,25 @@ impl GlobalDescriptorTable {
             .dpl(Ring::Ring3)
             .finish();
 
+        let tss_desc =
+            <DescriptorBuilder as GateDescriptorBuilder<u64>>::tss_descriptor(0, 0, true)
+                .present()
+                .finish();
+
         GlobalDescriptorTable {
             null: Descriptor::NULL,
             kernel_code,
             kernel_data,
             user_code,
             user_data,
-            tss_desc: Descriptor64::NULL,
+            tss_desc,
         }
     }
 
-    pub fn set_tss_desc(&mut self, tss_desc: Descriptor64) {
-        self.tss_desc = tss_desc;
+    pub fn set_tss_desc(&mut self, tss_addr: VirtAddr, size_in_bytes: usize) {
+        let base = tss_addr.to_inner() as u64;
+        let limit = size_in_bytes as u64;
+        self.tss_desc.set_base_limit(base, limit);
     }
 
     pub unsafe fn load(&self) {
@@ -71,22 +78,5 @@ impl GlobalDescriptorTable {
         unsafe {
             lgdt(&ptr);
         }
-    }
-}
-
-pub(super) fn init() {
-    let local = local::get().borrow();
-
-    // Safety: it is assumed that the GDT is correctly set up.
-    unsafe {
-        local.gdt.load();
-
-        // It is important that we don't reload fs or gs here.
-        // They are written using the gsbase fsbase msr's.
-        load_ss(KERNEL_DATA_SEL);
-        load_ds(KERNEL_DATA_SEL);
-        load_es(KERNEL_DATA_SEL);
-
-        load_cs(KERNEL_CODE_SEL);
     }
 }

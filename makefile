@@ -2,8 +2,8 @@ TOP_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 OUT_DIR=$(TOP_DIR)out
 
 # configuration
-ARCH=x86_64
-# ARCH=i686
+# ARCH=x86_64
+ARCH=i686
 CONFIG=debug
 LOADER=multiboot2
 QEMU_EXE=qemu-system-x86_64

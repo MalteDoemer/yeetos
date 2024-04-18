@@ -33,7 +33,6 @@ pub extern "C" fn kernel_main(boot_info: &BootInfoHeader, proc_id: usize) -> ! {
     arch::cpu::halt();
 }
 
-
 pub fn write_serial_byte(byte: u8) {
     use x86::io::outb;
     unsafe {

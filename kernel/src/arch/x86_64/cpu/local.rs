@@ -59,6 +59,10 @@ impl Local {
     pub fn tss(&self) -> &TaskStateSegment {
         &self.tss
     }
+
+    pub fn tss_mut(&mut self) -> &mut TaskStateSegment {
+        &mut self.tss
+    }
 }
 
 pub(super) fn init(proc_id: usize) {
@@ -98,7 +102,6 @@ pub(super) fn init(proc_id: usize) {
 
     // load the tss
     unsafe {
-        // Set up the TSS system descriptor
         let tss_addr = VirtAddr::new(&local.tss as *const TaskStateSegment as usize);
         let tss_size = core::mem::size_of::<TaskStateSegment>();
 
@@ -111,8 +114,6 @@ pub(super) fn init(proc_id: usize) {
     }
 
     drop(local);
-
-    // Do not deallocate the memory for the local object
     Box::leak(wrapper);
 }
 

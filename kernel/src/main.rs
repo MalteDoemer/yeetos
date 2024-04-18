@@ -26,7 +26,7 @@ pub extern "C" fn kernel_main(boot_info: &BootInfoHeader, proc_id: usize) -> ! {
     heap::init(boot_info);
 
     arch::cpu::features::verify();
-    
+
     arch::cpu::init(proc_id);
 
     info!("[CPU {}]: done", proc_id);

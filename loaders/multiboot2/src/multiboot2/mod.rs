@@ -1,6 +1,6 @@
 use alloc::{string::String, vec::Vec};
 use log::info;
-use memory::VirtAddr;
+use memory::virt::VirtAddr;
 
 use self::{tag::Tag, tag_iterator::TagIterator};
 

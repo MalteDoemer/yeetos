@@ -1,6 +1,6 @@
 use core::ops::Range;
 
-use crate::{paddr, Frame};
+use crate::phys::{paddr, Frame};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PhysicalRange {

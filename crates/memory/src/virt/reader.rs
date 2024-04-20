@@ -1,4 +1,4 @@
-use crate::VirtAddr;
+use crate::virt::VirtAddr;
 
 pub struct MemoryReader {
     current: usize,

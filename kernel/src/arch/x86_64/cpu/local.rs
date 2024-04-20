@@ -1,7 +1,7 @@
 use core::{cell::RefCell, marker::PhantomData, ptr::NonNull};
 
 use alloc::boxed::Box;
-use memory::VirtAddr;
+use memory::virt::VirtAddr;
 use x86::{
     bits64::task::TaskStateSegment,
     gs_deref,

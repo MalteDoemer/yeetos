@@ -26,7 +26,7 @@ mod panic_handling;
 mod vga;
 
 use log::info;
-use memory::{to_higher_half, VirtAddr};
+use memory::{to_higher_half, virt::VirtAddr};
 use multiboot2::Multiboot2Info;
 
 use crate::{

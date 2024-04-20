@@ -1,4 +1,4 @@
-use memory::VirtAddr;
+use memory::virt::VirtAddr;
 use tar_no_std::{ArchiveEntry, TarArchiveRef};
 
 use crate::multiboot2::{Multiboot2Info, MultibootModule};

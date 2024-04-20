@@ -1,7 +1,7 @@
 use core::{arch::asm, cell::RefCell, marker::PhantomData, ptr::NonNull};
 
 use alloc::boxed::Box;
-use memory::VirtAddr;
+use memory::virt::VirtAddr;
 use x86::{
     bits32::task::TaskStateSegment,
     segmentation::{load_ds, load_es, load_fs, load_gs, load_ss},

@@ -3,7 +3,7 @@ use core::marker::PhantomData;
 use bitflags::bitflags;
 use zeroize::Zeroize;
 
-use crate::{AccessFlags, Page, PhysAddr, PAGE_TABLE_ENTRIES};
+use crate::{phys::PhysAddr, virt::Page, AccessFlags, PAGE_TABLE_ENTRIES};
 
 #[repr(u8)]
 #[derive(Debug, Clone, Copy)]

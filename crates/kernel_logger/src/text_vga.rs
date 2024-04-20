@@ -1,6 +1,6 @@
 use core::fmt;
 
-use memory::{to_higher_half, VirtAddr};
+use memory::{to_higher_half, virt::VirtAddr};
 use spin::Mutex;
 
 const BUFFER_HEIGHT: usize = 25;

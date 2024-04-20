@@ -1,5 +1,5 @@
 use alloc::vec::Vec;
-use memory::{MemoryMapEntry, MemoryMapEntryKind, PhysAddr};
+use memory::{phys::PhysAddr, MemoryMapEntry, MemoryMapEntryKind};
 
 use crate::multiboot2::{MemoryRegion, Multiboot2Info};
 

@@ -1,4 +1,4 @@
-use memory::VirtAddr;
+use memory::virt::VirtAddr;
 use x86::{
     dtables::{lgdt, DescriptorTablePointer},
     segmentation::{

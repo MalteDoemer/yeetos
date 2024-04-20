@@ -1,4 +1,4 @@
-use crate::{VirtAddr, PAGE_SHIFT};
+use crate::{virt::VirtAddr, PAGE_SHIFT};
 
 type Inner = usize;
 

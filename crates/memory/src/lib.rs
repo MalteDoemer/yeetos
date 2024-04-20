@@ -7,24 +7,13 @@
 #![feature(const_option)]
 
 mod arch;
-mod frame;
 mod misc;
 mod mmap;
-mod paddr;
-mod page;
+
 pub mod paging;
-mod prange;
-mod reader;
-mod vaddr;
-mod vrange;
+pub mod phys;
+pub mod virt;
 
 pub use arch::*;
-pub use frame::*;
 pub use misc::*;
 pub use mmap::*;
-pub use paddr::*;
-pub use page::*;
-pub use prange::*;
-pub use reader::*;
-pub use vaddr::*;
-pub use vrange::*;

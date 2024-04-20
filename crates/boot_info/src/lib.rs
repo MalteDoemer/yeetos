@@ -6,7 +6,7 @@ pub mod platform_info;
 
 use boot_logger_info::BootLoggerInfo;
 use kernel_image_info::KernelImageInfo;
-use memory::{MemoryMap, VirtAddr};
+use memory::{virt::VirtAddr, MemoryMap};
 use platform_info::PlatformInfo;
 
 pub const BOOT_INFO_STRUCT_V1: usize = 1;

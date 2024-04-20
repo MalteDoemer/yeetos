@@ -1,4 +1,4 @@
-use memory::VirtAddr;
+use memory::virt::VirtAddr;
 use spin::Once;
 use x86::{
     bits64::{rflags::RFlags, segmentation::Descriptor64},

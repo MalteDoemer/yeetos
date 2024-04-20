@@ -1,4 +1,4 @@
-use memory::{VirtAddr, VirtualRange};
+use memory::virt::{VirtAddr, VirtualRange};
 
 #[derive(Debug)]
 pub struct KernelImageInfo {

@@ -1,4 +1,4 @@
-use memory::{MemoryReader, VirtAddr};
+use memory::virt::{MemoryReader, VirtAddr};
 
 use super::{tag::Tag, tag_info::TagInfo};
 

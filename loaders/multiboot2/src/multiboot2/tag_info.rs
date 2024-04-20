@@ -1,4 +1,4 @@
-use memory::VirtAddr;
+use memory::virt::VirtAddr;
 
 pub(crate) const END_TAG: u32 = 0;
 pub(crate) const BOOT_COMMAND_LINE_TAG: u32 = 1;

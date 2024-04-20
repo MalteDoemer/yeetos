@@ -1,7 +1,11 @@
 use alloc::vec::Vec;
 use boot_info::kernel_image_info::KernelImageInfo;
 use elf::{abi::PT_LOAD, endian::LittleEndian, segment::ProgramHeader, ElfBytes, ParseError};
-use memory::{to_lower_half, Page, VirtAddr, VirtualRange, KERNEL_BASE, PAGE_SIZE};
+use memory::{
+    to_lower_half,
+    virt::{Page, VirtAddr, VirtualRange},
+    KERNEL_BASE, PAGE_SIZE,
+};
 
 const PHDR_EXEC: u32 = 1;
 const PHDR_WRITE: u32 = 2;

@@ -2,7 +2,7 @@ use core::sync::atomic::{AtomicUsize, Ordering};
 
 use acpi::AcpiTables;
 use log::info;
-use memory::{to_higher_half, VirtAddr};
+use memory::{to_higher_half, virt::VirtAddr};
 use spin::Once;
 
 use crate::{acpi::IdentityMapAcpiHandler, arch::paging, boot_info, idt};

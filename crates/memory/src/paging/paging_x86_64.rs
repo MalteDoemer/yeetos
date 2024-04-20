@@ -3,7 +3,7 @@ use core::marker::PhantomData;
 use bitflags::bitflags;
 use zeroize::Zeroize;
 
-use crate::{AccessFlags, Page, PhysAddr, FRAME_SIZE, PAGE_TABLE_ENTRIES};
+use crate::{phys::PhysAddr, virt::Page, AccessFlags, FRAME_SIZE, PAGE_TABLE_ENTRIES};
 
 #[repr(u8)]
 #[derive(Debug, Clone, Copy)]
@@ -19,8 +19,7 @@ pub enum EntryUsage {
 }
 
 #[repr(transparent)]
-#[derive(Clone, Copy)]
-#[derive(Zeroize)]
+#[derive(Clone, Copy, Zeroize)]
 pub struct Entry(u64);
 
 bitflags! {
@@ -159,7 +158,7 @@ pub trait HierarchicalLevel: TableLevel {
 }
 
 pub trait PagingLevel: TableLevel {
-    const PAGE_FRAME_SIZE: usize;
+    const PAGE_FRAME_SIZE: u64;
 }
 
 /// Level1 represents the page table (PT).
@@ -183,15 +182,15 @@ impl TableLevel for Level3 {}
 impl TableLevel for Level4 {}
 
 impl PagingLevel for Level1 {
-    const PAGE_FRAME_SIZE: usize = FRAME_SIZE; // 4KiB
+    const PAGE_FRAME_SIZE: u64 = FRAME_SIZE; // 4KiB
 }
 
 impl PagingLevel for Level2 {
-    const PAGE_FRAME_SIZE: usize = FRAME_SIZE * 512; // 2MiB
+    const PAGE_FRAME_SIZE: u64 = FRAME_SIZE * 512; // 2MiB
 }
 
 impl PagingLevel for Level3 {
-    const PAGE_FRAME_SIZE: usize = FRAME_SIZE * 512 * 512; // 1GiB
+    const PAGE_FRAME_SIZE: u64 = FRAME_SIZE * 512 * 512; // 1GiB
 }
 
 impl HierarchicalLevel for Level4 {

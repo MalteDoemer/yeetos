@@ -7,7 +7,7 @@ use core::{
 use boot_info::BootInfoHeader;
 use linked_list_allocator::Heap;
 use log::info;
-use memory::VirtualRange;
+use memory::virt::VirtualRange;
 use spin::{Mutex, Once};
 
 #[global_allocator]

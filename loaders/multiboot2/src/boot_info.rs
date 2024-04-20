@@ -10,7 +10,9 @@ use boot_info::{
     BootInfoHeader, BOOT_INFO_STRUCT_V1,
 };
 use memory::{
-    to_higher_half, MemoryMap, MemoryMapEntry, Page, VirtAddr, VirtualRange, MEMORY_MAP_ENTRIES,
+    to_higher_half,
+    virt::{Page, VirtAddr, VirtualRange},
+    MemoryMap, MemoryMapEntry, MEMORY_MAP_ENTRIES,
 };
 
 use crate::{

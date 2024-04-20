@@ -2,7 +2,7 @@ use alloc::{
     string::{String, ToString},
     vec::Vec,
 };
-use memory::MemoryReader;
+use memory::virt::MemoryReader;
 
 use super::{
     tag_info::*, BasicMemoryInfo, BiosBootDevice, MemoryRegion, MultibootModule, RSDPDescriptorV1,

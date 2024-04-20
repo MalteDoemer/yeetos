@@ -1,6 +1,6 @@
 use core::ops::Range;
 
-use crate::Page;
+use crate::virt::Page;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VirtualRange {

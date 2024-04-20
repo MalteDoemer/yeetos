@@ -1,11 +1,13 @@
 use core::ops::Range;
 
-use crate::phys::{paddr, Frame};
+use crate::phys::{Frame, Inner};
+
+use super::PhysAddr;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PhysicalRange {
     start: Frame,
-    num_frames: paddr::Inner,
+    num_frames: Inner,
 }
 
 impl PhysicalRange {
@@ -13,14 +15,14 @@ impl PhysicalRange {
     ///
     /// # Panics
     /// If `start + num_frames` overflows.
-    pub const fn new(start: Frame, num_frames: paddr::Inner) -> Self {
+    pub const fn new(start: Frame, num_frames: Inner) -> Self {
         Self::checked_new(start, num_frames).unwrap()
     }
 
     /// Creates a new `PhysicalRange`.
     ///
     /// Returns `None` if `start + num_frames` overflows.
-    pub const fn checked_new(start: Frame, num_frames: paddr::Inner) -> Option<Self> {
+    pub const fn checked_new(start: Frame, num_frames: Inner) -> Option<Self> {
         let rng = PhysicalRange { start, num_frames };
 
         if rng.overflows() {
@@ -50,7 +52,11 @@ impl PhysicalRange {
         self.start
     }
 
-    pub const fn num_frames(&self) -> paddr::Inner {
+    pub const fn start_addr(&self) -> PhysAddr {
+        self.start.to_addr()
+    }
+
+    pub const fn num_frames(&self) -> Inner {
         self.num_frames
     }
 
@@ -60,9 +66,24 @@ impl PhysicalRange {
         self.checked_end().unwrap()
     }
 
+    /// # Panics
+    /// If `start + num_frames` overflows.
+    pub const fn end_addr(&self) -> PhysAddr {
+        self.end().to_addr()
+    }
+
     /// Returns `None` if `start + num_frames` overflows.
     pub const fn checked_end(&self) -> Option<Frame> {
         self.start.checked_add(self.num_frames)
+    }
+
+    /// Returns `None` if `start + num_frames` overflows.
+    pub const fn checked_end_addr(&self) -> Option<PhysAddr> {
+        if let Some(end) = self.checked_end() {
+            Some(end.to_addr())
+        } else {
+            None
+        }
     }
 
     pub const fn overflows(&self) -> bool {

@@ -109,7 +109,7 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
     // Initialize some global variables that the ap initialization
     // code will use to set up the stacks for each core.
     acpi::init_kernel_stack_vars(
-        kernel_image_info.stack.start().to_addr(),
+        kernel_image_info.stack.start_addr(),
         kernel_image.kernel_stack_size(),
     );
 

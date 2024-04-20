@@ -2,6 +2,8 @@ use core::ops::Range;
 
 use crate::virt::Page;
 
+use super::VirtAddr;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VirtualRange {
     start: Page,
@@ -50,6 +52,10 @@ impl VirtualRange {
         self.start
     }
 
+    pub const fn start_addr(&self) -> VirtAddr {
+        self.start.to_addr()
+    }
+
     pub const fn num_pages(&self) -> usize {
         self.num_pages
     }
@@ -60,9 +66,24 @@ impl VirtualRange {
         self.checked_end().unwrap()
     }
 
+    /// # Panics
+    /// If `start + num_pages` overflows.
+    pub const fn end_addr(&self) -> VirtAddr {
+        self.end().to_addr()
+    }
+
     /// Returns `None` if `start + num_pages` overflows.
     pub const fn checked_end(&self) -> Option<Page> {
         self.start.checked_add(self.num_pages)
+    }
+
+    /// Returns `None` if `start + num_pages` overflows.
+    pub const fn checked_end_addr(&self) -> Option<VirtAddr> {
+        if let Some(end) = self.checked_end() {
+            Some(end.to_addr())
+        } else {
+            None
+        }
     }
 
     pub const fn overflows(&self) -> bool {

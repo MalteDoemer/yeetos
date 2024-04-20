@@ -165,7 +165,7 @@ impl<'a> KernelImage<'a> {
 
         let stack = Self::get_stack_segment(load_start_addr, num_cores, kernel_stack_size);
 
-        let image_base_mem = stack.end().to_addr();
+        let image_base_mem = stack.end_addr();
 
         let rodata =
             Self::get_optional_segment_from_phdr(phdrs.rodata, image_base_file, image_base_mem);
@@ -213,11 +213,11 @@ impl<'a> KernelImage<'a> {
         data: Option<VirtualRange>,
     ) -> VirtualRange {
         let heap_start = if let Some(data) = data {
-            data.end().to_addr()
+            data.end_addr()
         } else if let Some(relro) = relro {
-            relro.end().to_addr()
+            relro.end_addr()
         } else {
-            code.end().to_addr()
+            code.end_addr()
         };
 
         let heap_end = heap_start + kernel_heap_size;
@@ -399,7 +399,7 @@ impl<'a> KernelImage<'a> {
     }
 
     fn clear_segment(&self, segment: VirtualRange) {
-        let zero_start = segment.start().to_addr().as_ptr_mut::<u8>();
+        let zero_start = segment.start_addr().as_ptr_mut::<u8>();
         let size_in_bytes = segment.num_pages() * PAGE_SIZE;
 
         unsafe {
@@ -414,14 +414,14 @@ impl<'a> KernelImage<'a> {
         program_header: ProgramHeader,
         segment: VirtualRange,
     ) -> Result<(), KernelImageError> {
-        let zero_start = segment.start().to_addr();
+        let zero_start = segment.start_addr();
 
         // Note: casts from u64 to usize are still correct on 32-bit targets
         let addr_in_file = VirtAddr::new(program_header.p_vaddr as usize);
         let load_start = image_base_mem + (addr_in_file - image_base_file);
         let load_end = load_start + program_header.p_filesz as usize;
 
-        let zero_end = segment.end().to_addr();
+        let zero_end = segment.end_addr();
 
         debug_assert!(zero_start <= load_start && load_start <= load_end && load_end <= zero_end);
 

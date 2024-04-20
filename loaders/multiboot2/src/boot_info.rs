@@ -72,7 +72,7 @@ fn get_kernel_image_info(kernel_image_info: &KernelImageInfo) -> KernelImageInfo
 }
 
 fn translate_range_to_higher_half(range: VirtualRange) -> VirtualRange {
-    let page = Page::new(to_higher_half(range.start().to_addr()));
+    let page = Page::new(to_higher_half(range.start_addr()));
     VirtualRange::new(page, range.num_pages())
 }
 

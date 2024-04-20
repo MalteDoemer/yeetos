@@ -14,7 +14,7 @@
 mod arch;
 mod heap;
 mod kresult;
-mod memory;
+mod mm;
 mod panic_handler;
 
 extern crate alloc;

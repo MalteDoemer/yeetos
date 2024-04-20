@@ -2,10 +2,12 @@
 #![no_main]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![allow(dead_code)]
-// needed for gs_deref!()
+// needed for gs_deref!() macro
 #![feature(asm_const)]
 // needed for the heap allocator
 #![feature(alloc_error_handler)]
+// needed for try_new() functions
+#![feature(allocator_api)]
 // needed for idt.rs
 #![feature(abi_x86_interrupt)]
 

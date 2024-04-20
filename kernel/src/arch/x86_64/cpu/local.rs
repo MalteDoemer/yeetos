@@ -66,11 +66,12 @@ impl Local {
 }
 
 pub(super) fn init(proc_id: usize) {
-    let mut wrapper = Box::new(LocalWrapper {
+    let mut wrapper = Box::try_new(LocalWrapper {
         self_ref: NonNull::dangling(),
         local: RefCell::new(Local::new(proc_id)),
         _phantom: PhantomData,
-    });
+    })
+    .expect("unable to allocate cpu local struct");
 
     wrapper.self_ref = wrapper.as_ref().into();
 

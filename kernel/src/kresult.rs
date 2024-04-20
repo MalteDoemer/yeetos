@@ -1,4 +1,6 @@
 pub enum KError {
+    OutOfMemory,
+    InvalidArgument,
     Unknown,
 }
 

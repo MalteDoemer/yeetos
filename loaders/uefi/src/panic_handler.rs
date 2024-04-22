@@ -1,9 +1,10 @@
 use core::{arch::asm, panic::PanicInfo};
 
+use log::error;
+
 #[panic_handler]
-pub fn panic_handler(_info: &PanicInfo) -> ! {
-    // error!("{}", info);
-    // arch::cpu::halt();
+pub fn panic_handler(info: &PanicInfo) -> ! {
+    error!("{}", info);
 
     loop {
         unsafe {

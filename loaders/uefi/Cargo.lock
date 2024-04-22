@@ -57,11 +57,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
+name = "kernel_cmdline"
+version = "0.1.0"
+dependencies = [
+ "memory",
+]
+
+[[package]]
 name = "loader"
 version = "0.1.0"
 dependencies = [
  "acpi",
  "boot_info",
+ "kernel_cmdline",
  "log",
  "memory",
  "spin",

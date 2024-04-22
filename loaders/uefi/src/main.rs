@@ -1,9 +1,11 @@
 #![no_main]
 #![no_std]
+#![allow(dead_code)]
 
 mod acpi;
 mod boot_info;
 mod bootfs;
+mod initrd;
 mod panic_handler;
 mod time;
 
@@ -12,12 +14,9 @@ extern crate alloc;
 // use core::arch::asm;
 
 use bootfs::BootFs;
+use initrd::Initrd;
 use log::info;
-use memory::PAGE_SIZE;
-use uefi::{
-    prelude::*,
-    proto::media::file::{File, FileInfo},
-};
+use uefi::prelude::*;
 
 #[entry]
 fn main(handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
@@ -40,14 +39,26 @@ fn main(handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
         .into_regular_file()
         .expect("\\yeetos\\initrd is not a file");
 
-    let info = initrd_file.get_boxed_info::<FileInfo>().unwrap();
+    let (_boot_info_header, initrd_buffer) =
+        boot_info::allocate_boot_info(boot_services, Initrd::get_number_of_pages(&mut initrd_file));
 
-    let initrd_size: usize = info.file_size().try_into().unwrap();
-    let initrd_pages = initrd_size.next_multiple_of(PAGE_SIZE) / PAGE_SIZE;
+    let initrd = Initrd::from_file(&mut initrd_file, initrd_buffer);
 
-    let (_boot_info, _initrd_buffer) = boot_info::allocate_boot_info(boot_services, initrd_pages);
+    // Search for the kernel command line file in the INITRD
+    let cmdline_data = initrd
+        .file_by_name("cmdline")
+        .expect("kernel command line file not found")
+        .data_as_str()
+        .expect("kernel command line not valid utf-8");
 
-    info!("name={} size={}", info.file_name(), info.file_size());
+    let _kernel_cmdline = kernel_cmdline::KernelCommandLineParser::new(cmdline_data).parse();
+
+    // Search for the kernel file in the INITRD
+    let _kernel_file = initrd
+        .file_by_name("kernel")
+        .expect("kernel file not found");
+
+    info!("done");
 
     boot_services.stall(10_000_000);
 

@@ -4,6 +4,7 @@
 mod acpi;
 mod bootfs;
 mod panic_handler;
+mod time;
 
 extern crate alloc;
 
@@ -21,6 +22,8 @@ fn main(handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
     uefi::helpers::init(&mut system_table).expect("uefi::helpers::init() failed");
 
     let boot_services = system_table.boot_services();
+
+    time::init(boot_services);
 
     let acpi_tables = acpi::get_acpi_tables(&system_table);
     let num_cores = acpi::number_of_cores(&acpi_tables);

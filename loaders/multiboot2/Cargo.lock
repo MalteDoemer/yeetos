@@ -47,6 +47,7 @@ name = "boot_info"
 version = "0.1.0"
 dependencies = [
  "arrayvec",
+ "kernel_image",
  "memory",
 ]
 
@@ -74,6 +75,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "kernel_image"
+version = "0.1.0"
+dependencies = [
+ "elf",
+ "memory",
+]
+
+[[package]]
 name = "linked_list_allocator"
 version = "0.10.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -88,6 +97,7 @@ dependencies = [
  "boot_logger",
  "elf",
  "kernel_cmdline",
+ "kernel_image",
  "linked_list_allocator",
  "log",
  "memory",

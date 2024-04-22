@@ -1,11 +1,10 @@
 #![no_std]
 
 pub mod boot_logger_info;
-pub mod kernel_image_info;
 pub mod platform_info;
 
 use boot_logger_info::BootLoggerInfo;
-use kernel_image_info::KernelImageInfo;
+use kernel_image::KernelImageInfo;
 use memory::{virt::VirtAddr, MemoryMap};
 use platform_info::PlatformInfo;
 

@@ -1,5 +1,5 @@
 [package]
-name = "boot_info"
+name = "kernel_image"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,5 +7,7 @@ edition = "2021"
 
 [dependencies]
 memory = { path = "../memory" }
-kernel_image = { path = "../kernel_image" }
-arrayvec = { version = "0.7.2", default-features = false }
+
+[dependencies.elf]
+version = "0.7.2"
+default-features = false

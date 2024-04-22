@@ -19,12 +19,13 @@ mod devices;
 mod heap;
 mod idt;
 mod initrd;
-mod kernel_image;
 mod mmap;
 mod multiboot2;
+// mod old_kernel_image;
 mod panic_handling;
 mod vga;
 
+use kernel_image::KernelImage;
 use log::info;
 use memory::{to_higher_half, virt::VirtAddr};
 use multiboot2::Multiboot2Info;
@@ -32,7 +33,6 @@ use multiboot2::Multiboot2Info;
 use crate::{
     acpi::{make_jump_to_kernel, KERNEL_ENTRY},
     initrd::Initrd,
-    kernel_image::KernelImage,
 };
 
 #[no_mangle]

@@ -21,6 +21,7 @@ tar-no-std = "0.2.0"
 memory = { path = "../../crates/memory" }
 boot_info = { path = "../../crates/boot_info" }
 boot_logger = { path = "../../crates/boot_logger" }
+kernel_image = { path = "../../crates/kernel_image" }
 kernel_cmdline = { path = "../../crates/kernel_cmdline" }
 
 [dependencies.elf]

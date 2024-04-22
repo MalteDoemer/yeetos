@@ -1,8 +1,9 @@
 use core::ptr::addr_of_mut;
 
+use kernel_image::KernelImageInfo;
+
 use alloc::vec::Vec;
 use boot_info::{
-    kernel_image_info::KernelImageInfo,
     platform_info::{
         pc_x86::{self, PCx86Info},
         PlatformInfo,

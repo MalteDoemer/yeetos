@@ -11,6 +11,7 @@ spin = "0.9.4"
 tar-no-std = "0.2.0"
 
 memory = { path = "../../crates/memory" }
+boot_info = { path = "../../crates/boot_info" }
 
 [dependencies.uefi]
 version = "0.28.0"

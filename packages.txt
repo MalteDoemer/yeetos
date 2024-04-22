@@ -7,3 +7,7 @@ Archlinux packages used to create the ISO:
 
 Archlinux packages used to run qemu:
     qemu-full
+
+Archlinux packages for uefi:
+    edk2-ovmf
+    dosfstools

@@ -1,56 +1,46 @@
 #![no_main]
 #![no_std]
 
+mod acpi;
+mod bootfs;
 mod panic_handler;
 
 extern crate alloc;
 
+// use core::arch::asm;
+
+use bootfs::BootFs;
 use log::info;
-use uefi::prelude::*;
-use uefi::proto::device_path::text::{AllowShortcuts, DevicePathToText, DisplayOnly};
-use uefi::proto::loaded_image::LoadedImage;
-use uefi::table::boot::SearchType;
-use uefi::{Identify, Result};
+use uefi::{
+    prelude::*,
+    proto::media::file::{File, FileInfo},
+};
 
 #[entry]
-fn main(_handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
-    uefi::helpers::init(&mut system_table).unwrap();
-
-    info!("Hey UEFI!");
-
-    // system_table.boot_services().memory_map(buffer)
+fn main(handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
+    uefi::helpers::init(&mut system_table).expect("uefi::helpers::init() failed");
 
     let boot_services = system_table.boot_services();
 
-    print_image_path(boot_services).unwrap();
+    let acpi_tables = acpi::get_acpi_tables(&system_table);
+    let num_cores = acpi::number_of_cores(&acpi_tables);
+
+    info!("there are {} cores reported", num_cores);
+
+    let mut bootfs = BootFs::new(handle, boot_services);
+
+    let mut initrd_file = bootfs
+        .open_file_readonly(cstr16!("\\yeetos\\initrd"))
+        .expect("unable to open \\yeetos\\initrd")
+        .into_regular_file()
+        .expect("\\yeetos\\initrd is not a file");
+
+
+    let info = initrd_file.get_boxed_info::<FileInfo>().unwrap();
+
+    info!("name={} size={}", info.file_name(), info.file_size());
 
     boot_services.stall(10_000_000);
 
     Status::SUCCESS
-}
-
-fn print_image_path(boot_services: &BootServices) -> Result {
-    let loaded_image =
-        boot_services.open_protocol_exclusive::<LoadedImage>(boot_services.image_handle())?;
-
-    let device_path_to_text_handle = *boot_services
-        .locate_handle_buffer(SearchType::ByProtocol(&DevicePathToText::GUID))?
-        .first()
-        .expect("DevicePathToText is missing");
-
-    let device_path_to_text =
-        boot_services.open_protocol_exclusive::<DevicePathToText>(device_path_to_text_handle)?;
-
-    let image_device_path = loaded_image.file_path().expect("File path is not set");
-    let image_device_path_text = device_path_to_text
-        .convert_device_path_to_text(
-            boot_services,
-            image_device_path,
-            DisplayOnly(true),
-            AllowShortcuts(false),
-        )
-        .expect("convert_device_path_to_text failed");
-
-    info!("Image path: {}", &*image_device_path_text);
-    Ok(())
 }

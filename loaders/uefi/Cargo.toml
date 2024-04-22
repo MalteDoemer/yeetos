@@ -5,8 +5,13 @@ edition = "2021"
 
 [dependencies]
 log = "0.4.21"
-uefi = { version = "0.28.0", features = [
-    "alloc",
-    "global_allocator",
-    "logger",
-] }
+acpi = "5.0.0"
+x86 = "0.52.0"
+spin = "0.9.4"
+tar-no-std = "0.2.0"
+
+memory = { path = "../../crates/memory" }
+
+[dependencies.uefi]
+version = "0.28.0"
+features = ["alloc", "global_allocator", "logger"]

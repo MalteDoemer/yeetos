@@ -32,30 +32,35 @@ pub const MEMORY_TYPE_KERNEL_IMAGE: u32 = 0x80000006;
 
 #[entry]
 fn main(handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
+    // Initialize the heap
     heap::init();
 
-    uefi::helpers::init(&mut system_table).expect("uefi::helpers::init() failed");
+    // Initialize the uefi::logger module
+    uefi::helpers::init(&mut system_table).unwrap();
 
     let boot_services = system_table.boot_services();
 
-    time::init(boot_services);
-
+    // Parse the ACPI tables
     let acpi_tables = acpi::get_acpi_tables(&system_table);
     let num_cores = acpi::number_of_cores(&acpi_tables);
 
     info!("there are {} cores reported", num_cores);
 
+    // Open a handle to the EFI System Partition
     let mut bootfs = BootFs::new(handle, boot_services);
 
+    // Find and open the initrd file
     let mut initrd_file = bootfs
         .open_file_readonly(cstr16!("\\yeetos\\initrd"))
         .expect("unable to open \\yeetos\\initrd")
         .into_regular_file()
         .expect("\\yeetos\\initrd is not a file");
 
+    // Allocate memory for the boot info and INITRD
     let (_boot_info_header, initrd_buffer) =
         boot_info::allocate_boot_info(boot_services, Initrd::get_number_of_pages(&mut initrd_file));
 
+    // Load the INITRD into memory
     let initrd = Initrd::from_file(&mut initrd_file, initrd_buffer);
 
     // Search for the kernel command line file in the INITRD
@@ -65,6 +70,7 @@ fn main(handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
         .data_as_str()
         .expect("kernel command line not valid utf-8");
 
+    // Parse the kernel command line file
     let kernel_cmdline = kernel_cmdline::KernelCommandLineParser::new(cmdline_data).parse();
 
     // Search for the kernel file in the INITRD

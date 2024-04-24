@@ -1,6 +1,6 @@
 use core::sync::atomic::{AtomicUsize, Ordering};
 
-use acpi::AcpiTables;
+use acpi::{platform::ProcessorState, AcpiTables};
 use log::info;
 use memory::{to_higher_half, virt::VirtAddr};
 use spin::Once;
@@ -57,6 +57,8 @@ pub fn startup_aps(acpi_tables: &AcpiTables<IdentityMapAcpiHandler>) {
         panic!("startup_aps() called before init_kernel_stack_vars()");
     }
 
+    let num_cores = super::number_of_cores(acpi_tables);
+
     let platform_info = acpi_tables
         .platform_info()
         .expect("unable to get acpi platform info");
@@ -82,12 +84,10 @@ pub fn startup_aps(acpi_tables: &AcpiTables<IdentityMapAcpiHandler>) {
         .try_into()
         .expect("local apic address to large");
 
-    let num_cores = processor_info.application_processors.len() + 1;
-
     processor_info
         .application_processors
         .iter()
-        .filter(|ap| matches!(ap.state, acpi::platform::ProcessorState::WaitingForSipi))
+        .filter(|ap| ap.state == ProcessorState::WaitingForSipi)
         .map(|ap| ap.local_apic_id.try_into().unwrap())
         .for_each(|apic_id| unsafe {
             // We only set up `num_cores` of kernel stacks and we use

@@ -59,6 +59,8 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
             .expect("rsdp descriptor not present"),
     );
 
+    let num_cores = acpi::number_of_cores(&acpi_tables);
+
     // Get the INITRD module loaded by the multiboot2 loader
     let initrd = Initrd::from_multiboot_info(&mboot_info).expect("initrd module not found");
 
@@ -88,7 +90,7 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
 
     let kernel_image = KernelImage::new(
         kernel_image_base_addr,
-        acpi::number_of_cores(&acpi_tables),
+        num_cores,
         kernel_cmdline.stack_size(),
         kernel_cmdline.initial_heap_size(),
         kernel_file.data(),

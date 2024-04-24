@@ -438,6 +438,13 @@ impl<'a> KernelImage<'a> {
         self.parsed.stack_size
     }
 
+    /// The number of cores this KernelImage was initialized for.
+    ///
+    /// Note: this corresponds to the number of stacks.
+    pub fn num_cores(&self) -> usize {
+        self.parsed.num_cores
+    }
+
     pub fn load_kernel(&self) -> Result<(), KernelImageError> {
         let image_base_file = self.parsed.phdrs.first_segment_addr();
         let image_base_mem = self.info.image_base();

@@ -1,6 +1,7 @@
 use core::sync::atomic::{AtomicUsize, Ordering};
 
 use acpi::{platform::ProcessorState, AcpiTables};
+use kernel_image::KernelImage;
 use log::info;
 use memory::{to_higher_half, virt::VirtAddr};
 use spin::Once;
@@ -30,34 +31,12 @@ extern "C" {
     ) -> !;
 }
 
-/// Initializes the kernel stack variables for the ap initialization code.
-/// This function needs to be called before calling `startup_aps()`
-///
-/// # Panics
-/// If kernel_stacks_start or kernel_stack_size is zero.
-pub fn init_kernel_stack_vars(kernel_stacks_start: VirtAddr, kernel_stack_size: usize) {
-    let addr: usize = kernel_stacks_start.into();
+pub fn startup_aps(acpi_tables: &AcpiTables<IdentityMapAcpiHandler>, kernel_image: &KernelImage) {
+    let stacks_addr = kernel_image.kernel_image_info().stack.start_addr();
+    KERNEL_STACKS_VADDR.store(stacks_addr.to_inner(), Ordering::SeqCst);
+    KERNEL_STACK_SIZE.store(kernel_image.kernel_stack_size(), Ordering::SeqCst);
 
-    if addr == 0 {
-        panic!("init_kernel_stack_vars() called with kernel_stacks_start=0");
-    }
-
-    if kernel_stack_size == 0 {
-        panic!("init_kernel_stack_vars() called with kernel_stack_size=0");
-    }
-
-    KERNEL_STACKS_VADDR.store(addr, Ordering::SeqCst);
-    KERNEL_STACK_SIZE.store(kernel_stack_size, Ordering::SeqCst);
-}
-
-pub fn startup_aps(acpi_tables: &AcpiTables<IdentityMapAcpiHandler>) {
-    if KERNEL_STACKS_VADDR.load(Ordering::SeqCst) == 0
-        || KERNEL_STACK_SIZE.load(Ordering::SeqCst) == 0
-    {
-        panic!("startup_aps() called before init_kernel_stack_vars()");
-    }
-
-    let num_cores = super::number_of_cores(acpi_tables);
+    let num_cores = kernel_image.num_cores();
 
     let platform_info = acpi_tables
         .platform_info()

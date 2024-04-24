@@ -3,10 +3,10 @@ OUT_DIR=$(TOP_DIR)out
 
 # configuration
 
-# ARCH=x86_64
+# ARCH=i686
 ARCH=x86_64
 CONFIG=debug
-LOADER=uefi
+LOADER=multiboot2
 
 IMAGE_SIZE=64M
 

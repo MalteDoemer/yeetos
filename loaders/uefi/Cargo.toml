@@ -15,6 +15,10 @@ boot_info = { path = "../../crates/boot_info" }
 kernel_image = { path = "../../crates/kernel_image" }
 kernel_cmdline = { path = "../../crates/kernel_cmdline" }
 
+[dependencies.zeroize]
+version = "1.7.0"
+default-features = false
+
 [dependencies.uefi]
 version = "0.28.0"
 features = ["alloc", "logger"]

@@ -9,6 +9,7 @@ mod boot_info;
 mod bootfs;
 mod heap;
 mod initrd;
+mod paging;
 mod panic_handler;
 mod time;
 
@@ -29,6 +30,7 @@ use uefi::{
 
 pub const MEMORY_TYPE_BOOT_INFO: u32 = 0x80000005;
 pub const MEMORY_TYPE_KERNEL_IMAGE: u32 = 0x80000006;
+pub const MEMORY_TYPE_KERNEL_PAGE_TABLES: u32 = 0x80000007;
 
 #[entry]
 fn main(handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
@@ -104,6 +106,8 @@ fn main(handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
     .expect("unable to parse kernel elf image");
 
     let kernel_image_info = kernel_image.kernel_image_info();
+
+    paging::prepare(boot_services);
 
     info!(
         "kernel image: {:p} - {:p}",

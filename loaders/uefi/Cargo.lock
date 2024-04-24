@@ -99,6 +99,7 @@ dependencies = [
  "tar-no-std",
  "uefi",
  "x86",
+ "zeroize",
 ]
 
 [[package]]

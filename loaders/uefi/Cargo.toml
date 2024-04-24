@@ -17,4 +17,8 @@ kernel_cmdline = { path = "../../crates/kernel_cmdline" }
 
 [dependencies.uefi]
 version = "0.28.0"
-features = ["alloc", "global_allocator", "logger"]
+features = ["alloc", "logger"]
+
+[dependencies.linked_list_allocator]
+version = "0.10.5"
+default-features = false

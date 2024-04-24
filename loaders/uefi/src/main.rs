@@ -1,10 +1,13 @@
 #![no_main]
 #![no_std]
 #![allow(dead_code)]
+// needed for the heap allocator
+#![feature(alloc_error_handler)]
 
 mod acpi;
 mod boot_info;
 mod bootfs;
+mod heap;
 mod initrd;
 mod panic_handler;
 mod time;
@@ -29,6 +32,8 @@ pub const MEMORY_TYPE_KERNEL_IMAGE: u32 = 0x80000006;
 
 #[entry]
 fn main(handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
+    heap::init();
+
     uefi::helpers::init(&mut system_table).expect("uefi::helpers::init() failed");
 
     let boot_services = system_table.boot_services();

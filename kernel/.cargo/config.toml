@@ -2,7 +2,7 @@
 rustflags = [
     "-Csoft-float",
     "-Clink-arg=--entry=kernel_main",
-    "-Clink-arg=--image-base=0xfffff00000800000",
+    "-Clink-arg=--image-base=0xfffff00002000000",
     
 ]
 
@@ -10,7 +10,7 @@ rustflags = [
 rustflags = [
     "-Csoft-float",
     "-Clink-arg=--entry=kernel_main",
-    "-Clink-arg=--image-base=0xC0800000",
+    "-Clink-arg=--image-base=0xC2000000",
 
 ]
 

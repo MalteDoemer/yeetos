@@ -24,7 +24,7 @@ mod multiboot2;
 mod panic_handling;
 mod vga;
 
-use kernel_image::new_kernel_image::KernelImage;
+use kernel_image::KernelImage;
 use log::info;
 use memory::{to_higher_half, virt::VirtAddr};
 use multiboot2::Multiboot2Info;

@@ -15,8 +15,17 @@ extern crate alloc;
 
 use bootfs::BootFs;
 use initrd::Initrd;
+use kernel_image::{KernelImage, KernelImageError};
 use log::info;
-use uefi::prelude::*;
+use memory::PAGE_SIZE;
+use tar_no_std::ArchiveEntry;
+use uefi::{
+    prelude::*,
+    table::boot::{AllocateType, MemoryType},
+};
+
+pub const MEMORY_TYPE_BOOT_INFO: u32 = 0x80000005;
+pub const MEMORY_TYPE_KERNEL_IMAGE: u32 = 0x80000006;
 
 #[entry]
 fn main(handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
@@ -51,12 +60,52 @@ fn main(handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
         .data_as_str()
         .expect("kernel command line not valid utf-8");
 
-    let _kernel_cmdline = kernel_cmdline::KernelCommandLineParser::new(cmdline_data).parse();
+    let kernel_cmdline = kernel_cmdline::KernelCommandLineParser::new(cmdline_data).parse();
 
     // Search for the kernel file in the INITRD
-    let _kernel_file = initrd
+    let kernel_file = initrd
         .file_by_name("kernel")
         .expect("kernel file not found");
+
+    let kernel_size = KernelImage::compute_total_size(
+        acpi::number_of_cores(&acpi_tables),
+        kernel_cmdline.stack_size(),
+        kernel_cmdline.initial_heap_size(),
+        kernel_file.data(),
+    )
+    .expect("unable to parse kernel elf");
+
+    let kernel_pages = kernel_size.next_multiple_of(PAGE_SIZE) / PAGE_SIZE;
+
+    // TODO: support fixed image using AllocateType::Address()
+
+    let kernel_base: usize = boot_services
+        .allocate_pages(
+            AllocateType::AnyPages,
+            MemoryType::custom(MEMORY_TYPE_KERNEL_IMAGE),
+            kernel_pages,
+        )
+        .expect("unable to allocate pages for the kernel image")
+        .try_into()
+        .unwrap();
+
+    let kernel_image = KernelImage::new(
+        kernel_base.into(),
+        acpi::number_of_cores(&acpi_tables),
+        kernel_cmdline.stack_size(),
+        kernel_cmdline.initial_heap_size(),
+        true,
+        kernel_file.data(),
+    )
+    .expect("unable to parse kernel elf");
+
+    let kernel_image_info = kernel_image.kernel_image_info();
+
+    info!(
+        "kernel image: {:p} - {:p}",
+        kernel_image_info.start(),
+        kernel_image_info.end()
+    );
 
     info!("done");
 
@@ -64,3 +113,36 @@ fn main(handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
 
     Status::SUCCESS
 }
+
+// fn create_kernel_image<'a, 'b>(
+//     boot_services: &'a BootServices,
+//     kernel_file: ArchiveEntry<'b>,
+//     num_cores: usize,
+//     stack_size: usize,
+//     heap_size: usize,
+//     use_reloc: bool,
+// ) -> KernelImage<'b> {
+//     let kernel_size =
+//         KernelImage::compute_total_size(num_cores, stack_size, heap_size, kernel_file.data())
+//             .expect("unable to parse kernel elf file");
+
+//     let kernel_pages = kernel_size.next_multiple_of(PAGE_SIZE) / PAGE_SIZE;
+
+//     if use_reloc {
+//         // since we are using a relocatable kernel image we can
+//         // allocate the memory for the kernel anywhere
+
+//         let kernel_base: usize = boot_services
+//             .allocate_pages(
+//                 AllocateType::AnyPages,
+//                 MemoryType::custom(MEMORY_TYPE_KERNEL_IMAGE),
+//                 kernel_pages,
+//             )
+//             .expect("unable to allocate pages for the kernel image")
+//             .try_into()
+//             .unwrap();
+//     } else {
+//     }
+
+//     todo!()
+// }

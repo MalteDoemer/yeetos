@@ -85,6 +85,7 @@ dependencies = [
  "acpi",
  "boot_info",
  "kernel_cmdline",
+ "kernel_image",
  "log",
  "memory",
  "spin",

@@ -2,6 +2,7 @@
 
 mod kernel_image;
 mod kernel_image_info;
+pub mod new_kernel_image;
 
 extern crate alloc;
 

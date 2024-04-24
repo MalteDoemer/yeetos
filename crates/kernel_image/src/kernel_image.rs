@@ -57,6 +57,25 @@ pub struct KernelImage<'a> {
 }
 
 impl<'a> KernelImage<'a> {
+    pub fn compute_total_size(
+        num_cores: usize,
+        kernel_stack_size: usize,
+        kernel_heap_size: usize,
+        data: &'a [u8],
+    ) -> Result<usize, KernelImageError> {
+        let elf_image = ElfBytes::minimal_parse(data)?;
+        let phdrs = Self::get_phdrs(&elf_image)?;
+        let info = Self::get_image_info(
+            &phdrs,
+            VirtAddr::zero(),
+            num_cores,
+            kernel_stack_size,
+            kernel_heap_size,
+        );
+
+        Ok(info.size_in_bytes())
+    }
+
     /// Create a `KernelImage` struct using either `new_reloc()` or `new_fixed()` based on `use_reloc`.
     pub fn new(
         load_start_addr: VirtAddr,

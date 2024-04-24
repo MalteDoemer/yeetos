@@ -21,11 +21,10 @@ mod idt;
 mod initrd;
 mod mmap;
 mod multiboot2;
-// mod old_kernel_image;
 mod panic_handling;
 mod vga;
 
-use kernel_image::KernelImage;
+use kernel_image::new_kernel_image::KernelImage;
 use log::info;
 use memory::{to_higher_half, virt::VirtAddr};
 use multiboot2::Multiboot2Info;
@@ -77,15 +76,21 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
         .expect("kernel file not found");
 
     // Create the KernelImage struct.
-    // Relocation will be used based on the kernel command line argument `kernel_use_reloc` which defaults to true.
+    // Relocation will be used based on the kernel command line argument `use_reloc` which defaults to true.
     // Relocation can be disabled in order to facilitate debugging with gdb.
-    // Note: this function does not yet load the kernel.
+    // Note: this does not yet load the kernel.
+
+    let kernel_image_base_addr = if kernel_cmdline.use_reloc() {
+        Some(initrd.end_addr())
+    } else {
+        None
+    };
+
     let kernel_image = KernelImage::new(
-        initrd.end_addr(),
+        kernel_image_base_addr,
         acpi::number_of_cores(&acpi_tables),
         kernel_cmdline.stack_size(),
         kernel_cmdline.initial_heap_size(),
-        kernel_cmdline.use_reloc(),
         kernel_file.data(),
     )
     .expect("unable to parse the kernel elf image");

@@ -2,7 +2,7 @@ use boot_info::BootInfoHeader;
 use memory::PAGE_SIZE;
 use uefi::table::boot::{AllocateType, BootServices, MemoryType};
 
-const MEMORY_TYPE_BOOT_INFO: u32 = 0x80000005;
+use crate::MEMORY_TYPE_BOOT_INFO;
 
 pub fn allocate_boot_info(
     boot_services: &BootServices,

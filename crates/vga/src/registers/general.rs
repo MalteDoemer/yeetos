@@ -2,7 +2,7 @@ use super::{
     FCR_CGA_WRITE_ADDRESS, FCR_MDA_WRITE_ADDRESS, FCR_READ_ADDRESS, MSR_READ_ADDRESS,
     MSR_WRITE_ADDRESS, ST00_READ_ADDRESS, ST01_READ_CGA_ADDRESS, ST01_READ_MDA_ADDRESS,
 };
-use x86_64::instructions::port::{PortReadOnly, PortWriteOnly};
+use crate::port::{PortReadOnly, PortWriteOnly};
 
 /// Represents the general registers on vga hardware.
 #[allow(dead_code)]
@@ -19,7 +19,7 @@ pub struct GeneralRegisters {
 }
 
 impl GeneralRegisters {
-    pub(crate) fn new() -> GeneralRegisters {
+    pub(crate) const fn new() -> GeneralRegisters {
         GeneralRegisters {
             st00_read: PortReadOnly::new(ST00_READ_ADDRESS),
             st01_read_cga: PortReadOnly::new(ST01_READ_CGA_ADDRESS),

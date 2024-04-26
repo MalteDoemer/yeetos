@@ -2,7 +2,7 @@ use super::{
     COLOR_PALETTE_DATA_ADDRESS, COLOR_PALETTE_INDEX_READ_ADDRESS,
     COLOR_PALETTE_INDEX_WRITE_ADDRESSS, PALETTE_SIZE,
 };
-use x86_64::instructions::port::Port;
+use crate::port::Port;
 
 /// Represents the color palette registers on vga hardware.
 #[derive(Debug)]
@@ -13,7 +13,7 @@ pub struct ColorPaletteRegisters {
 }
 
 impl ColorPaletteRegisters {
-    pub(crate) fn new() -> ColorPaletteRegisters {
+    pub(crate) const fn new() -> ColorPaletteRegisters {
         ColorPaletteRegisters {
             data_port: Port::new(COLOR_PALETTE_DATA_ADDRESS),
             index_read_port: Port::new(COLOR_PALETTE_INDEX_READ_ADDRESS),

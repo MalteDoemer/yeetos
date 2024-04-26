@@ -1,7 +1,7 @@
 use super::{SRX_DATA_ADDRESS, SRX_INDEX_ADDRESS};
+use crate::port::Port;
 use bitflags::bitflags;
 use core::convert::TryFrom;
-use x86_64::instructions::port::Port;
 
 bitflags! {
     /// Represents the plane masks of the `SequencerIndex::PlaneMask` register.
@@ -73,7 +73,7 @@ pub struct SequencerRegisters {
 }
 
 impl SequencerRegisters {
-    pub(crate) fn new() -> SequencerRegisters {
+    pub(crate) const fn new() -> SequencerRegisters {
         SequencerRegisters {
             srx_index: Port::new(SRX_INDEX_ADDRESS),
             srx_data: Port::new(SRX_DATA_ADDRESS),

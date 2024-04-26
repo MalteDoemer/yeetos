@@ -5,13 +5,8 @@ authors = ["Ryan Kennedy <rkennedy9064@gmail.com>"]
 edition = "2018"
 description = "Support for vga specific functions, data structures, and registers."
 documentation = "https://docs.rs/vga"
-keywords = [
-    "vga",
-    "no_std",
-]
-categories = [
-    "no-std",
-]
+keywords = ["vga", "no_std"]
+categories = ["no-std"]
 license = "MIT/Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/rust-osdev/vga"
@@ -19,11 +14,14 @@ repository = "https://github.com/rust-osdev/vga"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bitflags = "1.2.1"
-conquer-once = { version = "0.3.2", default-features = false }
-font8x8 = { version = "0.3.1", default-features = false, features = ["unicode"] }
-spinning_top = { version = "0.2.4", features = ["nightly"] }
-x86_64 = "0.14.2"
+bitflags = "2.5.0"
+x86 = "0.52.0"
+spin = "0.9.8"
+
+[dependencies.font8x8]
+version = "0.3.1"
+default-features = false
+features = ["unicode"]
 
 [dependencies.num-traits]
 version = "0.2.14"

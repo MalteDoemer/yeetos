@@ -14,7 +14,7 @@ use super::{
     vga::{Vga, VGA},
 };
 use core::slice::from_raw_parts_mut;
-use spinning_top::SpinlockGuard;
+use spin::MutexGuard;
 
 use crate::drawing::Bresenham;
 pub use graphics_1280x800x256::Graphics1280x800x256;
@@ -74,7 +74,7 @@ pub trait TextWriter: Screen {
     /// Returns the start of the `FrameBuffer` as `*mut ScreenCharacter`
     /// as well as a lock to the vga driver. This ensures the vga
     /// driver stays locked while the frame buffer is in use.
-    fn get_frame_buffer(&self) -> (SpinlockGuard<Vga>, *mut ScreenCharacter) {
+    fn get_frame_buffer(&self) -> (MutexGuard<Vga>, *mut ScreenCharacter) {
         let mut vga = VGA.lock();
         let frame_buffer = vga.get_frame_buffer();
         (vga, usize::from(frame_buffer) as *mut ScreenCharacter)

@@ -12,6 +12,7 @@ use octant::Octant;
 pub type Point<T> = (T, T);
 
 pub(crate) trait SignedNum: Signed + Ord + Copy + NumCast + NumAssignOps {
+    #[allow(dead_code)]
     fn cast<T: NumCast>(value: T) -> Self {
         NumCast::from(value).unwrap()
     }

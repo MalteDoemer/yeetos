@@ -14,11 +14,11 @@ use super::{
     },
 };
 use crate::configurations::MODE_1280X800X256_CONFIGURATION;
-use conquer_once::spin::Lazy;
-use spinning_top::Spinlock;
+
+use spin::Mutex;
 
 /// Provides mutable access to the vga graphics card.
-pub static VGA: Lazy<Spinlock<Vga>> = Lazy::new(|| Spinlock::new(Vga::new()));
+pub static VGA: Mutex<Vga> = Mutex::new(Vga::new());
 
 /// Represents the starting address of the frame buffer for
 /// various video modes.
@@ -94,7 +94,7 @@ pub struct Vga {
 }
 
 impl Vga {
-    fn new() -> Vga {
+    const fn new() -> Vga {
         Vga {
             general_registers: GeneralRegisters::new(),
             sequencer_registers: SequencerRegisters::new(),

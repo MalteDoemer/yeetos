@@ -1,6 +1,6 @@
 use super::{Color16, GRX_DATA_ADDRESS, GRX_INDEX_ADDRESS};
+use crate::port::Port;
 use core::convert::TryFrom;
-use x86_64::instructions::port::Port;
 
 /// Represents a plane for the `GraphicsControllerIndex::ReadPlaneSelect` register.
 #[allow(dead_code)]
@@ -138,7 +138,7 @@ pub struct GraphicsControllerRegisters {
 }
 
 impl GraphicsControllerRegisters {
-    pub(crate) fn new() -> GraphicsControllerRegisters {
+    pub(crate) const fn new() -> GraphicsControllerRegisters {
         GraphicsControllerRegisters {
             grx_index: Port::new(GRX_INDEX_ADDRESS),
             grx_data: Port::new(GRX_DATA_ADDRESS),

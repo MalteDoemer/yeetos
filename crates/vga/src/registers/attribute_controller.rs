@@ -2,7 +2,7 @@ use super::{
     EmulationMode, ARX_DATA_ADDRESS, ARX_INDEX_ADDRESS, ST01_READ_CGA_ADDRESS,
     ST01_READ_MDA_ADDRESS,
 };
-use x86_64::instructions::port::Port;
+use crate::port::Port;
 
 /// Represents an index for the attribute controller registers.
 #[derive(Debug, Copy, Clone)]
@@ -68,7 +68,7 @@ pub struct AttributeControllerRegisters {
 }
 
 impl AttributeControllerRegisters {
-    pub(crate) fn new() -> AttributeControllerRegisters {
+    pub(crate) const fn new() -> AttributeControllerRegisters {
         AttributeControllerRegisters {
             arx_index: Port::new(ARX_INDEX_ADDRESS),
             arx_data: Port::new(ARX_DATA_ADDRESS),

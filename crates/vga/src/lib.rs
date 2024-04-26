@@ -14,3 +14,4 @@ pub mod fonts;
 pub mod registers;
 pub mod vga;
 pub mod writers;
+pub(crate) mod port;

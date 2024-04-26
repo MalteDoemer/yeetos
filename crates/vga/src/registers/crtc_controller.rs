@@ -2,7 +2,7 @@ use super::{
     EmulationMode, CRX_DATA_CGA_ADDRESS, CRX_DATA_MDA_ADDRESS, CRX_INDEX_CGA_ADDRESS,
     CRX_INDEX_MDA_ADDRESS,
 };
-use x86_64::instructions::port::Port;
+use crate::port::Port;
 
 /// Represents an index for the crtc controller registers.
 #[derive(Debug, Copy, Clone)]
@@ -80,7 +80,7 @@ pub struct CrtcControllerRegisters {
 }
 
 impl CrtcControllerRegisters {
-    pub(crate) fn new() -> CrtcControllerRegisters {
+    pub(crate) const fn new() -> CrtcControllerRegisters {
         CrtcControllerRegisters {
             crx_index_cga: Port::new(CRX_INDEX_CGA_ADDRESS),
             crx_index_mda: Port::new(CRX_INDEX_MDA_ADDRESS),

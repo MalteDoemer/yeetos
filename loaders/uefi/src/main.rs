@@ -5,6 +5,7 @@
 #![feature(alloc_error_handler)]
 
 mod acpi;
+mod arch;
 mod boot_info;
 mod bootfs;
 mod heap;
@@ -41,6 +42,9 @@ fn main(handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
     uefi::helpers::init(&mut system_table).unwrap();
 
     let boot_services = system_table.boot_services();
+
+    // Initialize time helper functions
+    time::init(boot_services);
 
     // Parse the ACPI tables
     let acpi_tables = acpi::get_acpi_tables(&system_table);
@@ -108,6 +112,8 @@ fn main(handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
     let kernel_image_info = kernel_image.kernel_image_info();
 
     paging::prepare(boot_services);
+
+    // acpi::startup_aps(boot_services, &acpi_tables, &kernel_image);
 
     info!(
         "kernel image: {:p} - {:p}",

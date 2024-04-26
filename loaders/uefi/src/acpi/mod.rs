@@ -1,4 +1,4 @@
-use acpi::AcpiTables;
+use acpi::{platform::ProcessorState, AcpiTables};
 
 use acpi_handler::IdentityMapAcpiHandler;
 use memory::virt::VirtAddr;
@@ -8,6 +8,9 @@ use uefi::table::{
 };
 
 mod acpi_handler;
+mod ap_startup;
+
+pub use ap_startup::startup_aps;
 
 pub fn number_of_cores(acpi_tables: &AcpiTables<IdentityMapAcpiHandler>) -> usize {
     acpi_tables
@@ -16,7 +19,9 @@ pub fn number_of_cores(acpi_tables: &AcpiTables<IdentityMapAcpiHandler>) -> usiz
         .processor_info
         .expect("unable to get acpi processor info")
         .application_processors
-        .len()
+        .iter()
+        .filter(|ap| ap.state == ProcessorState::WaitingForSipi)
+        .count()
         + 1 // + 1 for the BSP
 }
 

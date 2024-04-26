@@ -1,12 +1,17 @@
+use uefi::table::boot::BootServices;
+
+use crate::arch;
+
+pub fn init(boot_services: &BootServices) {
+    arch::time::init(boot_services);
+}
+
 #[no_mangle]
 pub extern "C" fn sleep_ms(millis: u64) {
-    sleep_us(millis * 1000);
+    arch::time::busy_sleep_ms(millis);
 }
 
 #[no_mangle]
 pub extern "C" fn sleep_us(micros: u64) {
-    let system_table = uefi::helpers::system_table();
-    let boot_services = system_table.boot_services();
-
-    boot_services.stall(micros.try_into().unwrap());
+    arch::time::busy_sleep_us(micros);
 }

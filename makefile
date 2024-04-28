@@ -53,7 +53,7 @@ DEPS:=$(INITRD)
 
 ifeq ($(LOADER), uefi)
 DEPS+= $(UEFI_IMG)
-QEMU_ARGS+= -bios $(UEFI_FIRMWARE) -drive format=raw,file=$(UEFI_IMG),if=ide
+QEMU_ARGS+= -bios $(UEFI_FIRMWARE) -drive format=raw,file=$(UEFI_IMG),if=ide -serial stdio 
 else ifeq ($(LOADER), multiboot2)
 DEPS+= $(ISO)
 QEMU_ARGS+= -cdrom $(ISO) -serial stdio 

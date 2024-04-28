@@ -52,6 +52,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "boot_logger"
+version = "0.1.0"
+dependencies = [
+ "arrayvec",
+ "boot_info",
+ "log",
+ "spin",
+]
+
+[[package]]
 name = "cfg-if"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -90,6 +100,7 @@ version = "0.1.0"
 dependencies = [
  "acpi",
  "boot_info",
+ "boot_logger",
  "kernel_cmdline",
  "kernel_image",
  "linked_list_allocator",
@@ -98,6 +109,7 @@ dependencies = [
  "spin",
  "tar-no-std",
  "uefi",
+ "vga",
  "x86",
  "zeroize",
 ]
@@ -279,6 +291,10 @@ name = "unicode-ident"
 version = "1.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3354b9ac3fae1ff6755cb6db53683adb661634f67557942dea4facebec0fee4b"
+
+[[package]]
+name = "vga"
+version = "0.1.0"
 
 [[package]]
 name = "x86"

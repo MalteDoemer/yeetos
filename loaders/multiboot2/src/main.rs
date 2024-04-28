@@ -22,7 +22,6 @@ mod initrd;
 mod mmap;
 mod multiboot2;
 mod panic_handling;
-mod vga;
 
 use kernel_image::KernelImage;
 use log::info;

@@ -9,18 +9,18 @@ pub trait TextWriter: fmt::Write {
     const WIDTH: usize;
 }
 
-pub struct VGATextMode80x25 {
+pub struct TextMode80x25 {
     current_pos: usize,
     write_color: ColorCode,
     buffer_address: usize,
 }
 
-impl TextWriter for VGATextMode80x25 {
+impl TextWriter for TextMode80x25 {
     const HEIGHT: usize = 25;
     const WIDTH: usize = 80;
 }
 
-impl fmt::Write for VGATextMode80x25 {
+impl fmt::Write for TextMode80x25 {
     fn write_char(&mut self, c: char) -> fmt::Result {
         let byte = if c.is_ascii() { c as u8 } else { 0xfe };
 
@@ -41,7 +41,7 @@ impl fmt::Write for VGATextMode80x25 {
     }
 }
 
-impl VGATextMode80x25 {
+impl TextMode80x25 {
     /// Creates a new `VGATextMode80x25` that can be
     /// used to write to a VGA device configured for 80x25 text mode.
     ///
@@ -52,6 +52,15 @@ impl VGATextMode80x25 {
         Self {
             current_pos: 0,
             write_color: DEFAULT_COLOR,
+            buffer_address: vga_address,
+        }
+    }
+
+    /// See `new()` for safety
+    pub const unsafe fn new_with_col(fg: Color, bg: Color, vga_address: usize) -> Self {
+        Self {
+            current_pos: 0,
+            write_color: ColorCode::new(fg, bg),
             buffer_address: vga_address,
         }
     }
@@ -89,9 +98,11 @@ impl VGATextMode80x25 {
                     self.new_line();
                 }
 
+                let row = Self::HEIGHT - 1;
+
                 self.write_char_at(
                     TextCharacter::new(byte, self.write_color),
-                    (Self::HEIGHT - 1) * self.current_pos,
+                    row * Self::WIDTH + self.current_pos,
                 );
 
                 self.current_pos += 1;
@@ -119,6 +130,8 @@ impl VGATextMode80x25 {
                 row * Self::WIDTH + i,
             );
         }
+
+        self.current_pos = 0;
     }
 
     /// This function deletes the current character from the last row.

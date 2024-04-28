@@ -16,8 +16,6 @@ mod time;
 
 extern crate alloc;
 
-// use core::arch::asm;
-
 use alloc::vec::Vec;
 use bootfs::BootFs;
 use initrd::Initrd;
@@ -26,6 +24,7 @@ use log::info;
 use memory::{phys::PhysAddr, virt::VirtAddr, PAGE_SIZE};
 use uefi::{
     prelude::*,
+    proto::console::gop::GraphicsOutput,
     table::boot::{AllocateType, MemoryType},
 };
 
@@ -35,13 +34,33 @@ pub const MEMORY_TYPE_KERNEL_PAGE_TABLES: u32 = 0x80000007;
 
 #[entry]
 fn main(handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
+    // Perform initialization with boot_services still available
+    init(handle, &mut system_table);
+
+    system_table.boot_services().stall(1_000_000);
+
+    info!("exiting boot services now");
+
+    panic_handler::on_exit_boot_services();
+
+    // Call exit_boot_services to transition over to full control over the system
+    let (_runtime_table, _mmap) = system_table.exit_boot_services(MemoryType::LOADER_DATA);
+
+    panic!("done!");
+    // arch::halt();
+}
+
+fn init(handle: Handle, system_table: &SystemTable<Boot>) {
+    let boot_services = system_table.boot_services();
+
+    // Initialize logger
+    boot_logger::init();
+
+    // Initialize the panic handler so it has access to stdout
+    panic_handler::init(system_table);
+
     // Initialize the heap
     heap::init();
-
-    // Initialize the uefi::logger module
-    uefi::helpers::init(&mut system_table).unwrap();
-
-    let boot_services = system_table.boot_services();
 
     // Initialize time helper functions
     time::init(boot_services);
@@ -113,19 +132,11 @@ fn main(handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
 
     paging::prepare(boot_services);
 
-    // acpi::startup_aps(boot_services, &acpi_tables, &kernel_image);
-
     info!(
         "kernel image: {:p} - {:p}",
         kernel_image_info.start(),
         kernel_image_info.end()
     );
-
-    info!("done");
-
-    boot_services.stall(10_000_000);
-
-    Status::SUCCESS
 }
 
 fn dump_memory_map(boot_services: &BootServices) {

@@ -1,5 +1,5 @@
 [package]
-name = "loader"
+name = "multiboot2-loader"
 version = "0.1.0"
 edition = "2021"
 

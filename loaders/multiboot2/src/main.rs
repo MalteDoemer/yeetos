@@ -48,7 +48,7 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
     devices::init();
 
     // Safety:
-    // mboot_ptr is passed by boot.s and assumend to be correct.
+    // mboot_ptr is passed by boot.s and assumed to be correct.
     let mboot_info = unsafe { Multiboot2Info::new(VirtAddr::new(mboot_ptr)) };
 
     // Parse the ACPI tables
@@ -93,8 +93,7 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
         kernel_cmdline.stack_size(),
         kernel_cmdline.initial_heap_size(),
         kernel_file.data(),
-    )
-    .expect("unable to parse the kernel elf image");
+    ).expect("unable to parse the kernel elf image");
 
     let kernel_image_info = kernel_image.kernel_image_info();
 

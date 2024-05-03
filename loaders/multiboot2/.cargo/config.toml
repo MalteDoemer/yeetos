@@ -1,3 +1,6 @@
+[build]
+target = "triplets/x86_64-yeetos.json"
+
 [target.x86_64-yeetos]
 rustflags = ["-Csoft-float", "-Clink-args=--script=linkers/x86_64.ld"]
 

@@ -6,7 +6,7 @@ OUT_DIR=$(TOP_DIR)out
 # ARCH=i686
 ARCH=x86_64
 CONFIG=debug
-LOADER=uefi
+LOADER=multiboot2
 
 IMAGE_SIZE=64M
 
@@ -19,10 +19,10 @@ CORES=4
 TARGET:=$(ARCH)-yeetos
 
 UEFI_DIR=$(TOP_DIR)/loaders/uefi
-UEFI_BIN=$(UEFI_DIR)/target/$(ARCH)-unknown-uefi/$(CONFIG)/loader.efi
+UEFI_BIN=$(UEFI_DIR)/target/$(ARCH)-unknown-uefi/$(CONFIG)/uefi-loader.efi
 
 MULTIBOOT2_DIR=$(TOP_DIR)/loaders/multiboot2
-MULTIBOOT2_BIN=$(MULTIBOOT2_DIR)/target/$(TARGET)/$(CONFIG)/loader
+MULTIBOOT2_BIN=$(MULTIBOOT2_DIR)/target/$(TARGET)/$(CONFIG)/multiboot2-loader
 
 KERNEL_DIR:=$(TOP_DIR)kernel
 KERNEL_BIN:=$(KERNEL_DIR)/target/$(TARGET)/$(CONFIG)/kernel

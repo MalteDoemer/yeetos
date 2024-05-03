@@ -95,26 +95,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9afa463f5405ee81cdb9cc2baf37e08ec7e4c8209442b5d72c04cfb2cd6e6286"
 
 [[package]]
-name = "loader"
-version = "0.1.0"
-dependencies = [
- "acpi",
- "boot_info",
- "boot_logger",
- "kernel_cmdline",
- "kernel_image",
- "linked_list_allocator",
- "log",
- "memory",
- "spin",
- "tar-no-std",
- "uefi",
- "vga",
- "x86",
- "zeroize",
-]
-
-[[package]]
 name = "lock_api"
 version = "0.4.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -256,6 +236,26 @@ dependencies = [
  "uefi-macros",
  "uefi-raw",
  "uguid",
+]
+
+[[package]]
+name = "uefi-loader"
+version = "0.1.0"
+dependencies = [
+ "acpi",
+ "boot_info",
+ "boot_logger",
+ "kernel_cmdline",
+ "kernel_image",
+ "linked_list_allocator",
+ "log",
+ "memory",
+ "spin",
+ "tar-no-std",
+ "uefi",
+ "vga",
+ "x86",
+ "zeroize",
 ]
 
 [[package]]

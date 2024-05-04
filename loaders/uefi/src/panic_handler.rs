@@ -8,7 +8,6 @@ use core::{
 use log::error;
 use spin::Mutex;
 use uefi::table::{Boot, SystemTable};
-use vga::text_mode::TextMode80x25;
 
 use crate::arch;
 
@@ -58,13 +57,7 @@ pub fn panic_handler(info: &PanicInfo) -> ! {
                 let _ = system_table.stdout().write_str(log.as_str());
             });
         } else {
-            // otherwise use the vga text buffer
-            // Note: we just assume it is set up for 80x25 text mode
-            boot_logger::get(|log| {
-                // Safety: we have exclusive access to the VGA frame buffer since we use the PANIC_LOCK
-                let mut writer = unsafe { TextMode80x25::new(0xb8000) };
-                let _ = write!(writer, "{}", log.as_str());
-            });
+            // TODO: 
         }
     }
 

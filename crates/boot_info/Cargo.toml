@@ -8,4 +8,6 @@ edition = "2021"
 [dependencies]
 memory = { path = "../memory" }
 kernel_image = { path = "../kernel_image" }
+kernel_graphics = { path = "../kernel_graphics" }
+
 arrayvec = { version = "0.7.2", default-features = false }

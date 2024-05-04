@@ -24,7 +24,6 @@ use log::info;
 use memory::{phys::PhysAddr, virt::VirtAddr, PAGE_SIZE};
 use uefi::{
     prelude::*,
-    proto::console::gop::GraphicsOutput,
     table::boot::{AllocateType, MemoryType},
 };
 

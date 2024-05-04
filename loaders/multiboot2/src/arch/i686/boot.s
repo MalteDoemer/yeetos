@@ -14,6 +14,12 @@ ENTRY_USAGE_TABLE_BITS = 0b10 << 9
 TABLE_ENTRY_BITS = PRESENT_FLAG | WRITABLE_FLAG | ENTRY_USAGE_TABLE_BITS
 HUGE_PAGE_ENTRY_BITS = PRESENT_FLAG | WRITABLE_FLAG | PAGE_SIZE_FLAG | ENTRY_USAGE_PAGE_BITS
 
+// Values for the frame buffer tag
+// Note: a value of zero means no preference
+FRAME_BUFFER_WIDTH = 0
+FRAME_BUFFER_HEIGHT = 0
+FRAME_BUFFER_DEPTH = 32
+
 MULTIBOOT2_HEADER_MAGIC = 0xe85250d6
 MULTIBOOT2_LOADER_MAGIC = 0x36d76289;
 MULTIBOOT2_ARCHITECTURE_I386 = 0
@@ -25,7 +31,7 @@ mboot_header:
     // magic number
     .long MULTIBOOT2_HEADER_MAGIC
 
-    // architecure
+    // architecture
     .long MULTIBOOT2_ARCHITECTURE_I386 // we use i386 since there is no number for x86_64
 
     // header size
@@ -54,6 +60,15 @@ mboot_header:
     .short 6
     .short 0
     .long 8
+
+    // frame buffer tag
+    .short 5
+    .short 0
+    .long 20
+    .long FRAME_BUFFER_WIDTH
+    .long FRAME_BUFFER_HEIGHT
+    .long FRAME_BUFFER_DEPTH
+    .long 0
 
     // end tag
     .long 0

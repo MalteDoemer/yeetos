@@ -2,11 +2,13 @@ use alloc::{
     string::{String, ToString},
     vec::Vec,
 };
-use memory::virt::MemoryReader;
+
+use kernel_graphics::{EgaPixelFormat, IndexedPixelFormat, PixelFormat, RgbColor, RgbPixelFormat};
+use memory::{phys::PhysAddr, virt::MemoryReader};
 
 use super::{
-    tag_info::*, BasicMemoryInfo, BiosBootDevice, MemoryRegion, MultibootModule, RSDPDescriptorV1,
-    RSDPDescriptorV2,
+    tag_info::*, BasicMemoryInfo, BiosBootDevice, FrameBufferInfo, MemoryRegion, MultibootModule,
+    RSDPDescriptorV1, RSDPDescriptorV2,
 };
 
 pub(crate) enum Tag {
@@ -17,6 +19,7 @@ pub(crate) enum Tag {
     BiosBootDevice(BiosBootDevice),
     ModuleDescriptor(MultibootModule),
     MemoryRegions(Vec<MemoryRegion>),
+    FrameBufferInfo(FrameBufferInfo),
     OldRSDP(RSDPDescriptorV1),
     NewRSDP(RSDPDescriptorV2),
     ImageLoadBasePhysical(u32),
@@ -42,9 +45,9 @@ impl Tag {
                 IMAGE_LOAD_BASE_PHYS_ADDR_TAG => Self::parse_image_load_base(info),
                 ACPI_RSDP_OLD_TAG => Self::parse_old_rsdp(info),
                 ACPI_RSDP_NEW_TAG => Self::parse_new_rsdp(info),
+                FRAME_BUFFER_INFO_TAG => Self::parse_frame_buffer_info(info),
 
                 VBE_INFO_TAG => Tag::Unknown(info.tag_type()),
-                FRAME_BUFFER_INFO_TAG => Tag::Unknown(info.tag_type()),
                 ELF_SYMBOLS_TAG => Tag::Unknown(info.tag_type()),
                 APM_TABLE_TAG => Tag::Unknown(info.tag_type()),
                 EFI32_SYSTEM_TABLE_POINTER_TAG => Tag::Unknown(info.tag_type()),
@@ -221,6 +224,77 @@ impl Tag {
             let rsdp = *ptr;
 
             Tag::NewRSDP(rsdp)
+        }
+    }
+
+    unsafe fn parse_frame_buffer_info(info: TagInfo) -> Tag {
+        let mut reader = MemoryReader::new(info.data_addr());
+
+        // Safety:
+        // function contract assures a valid tag
+        unsafe {
+            let frame_buffer_addr = reader.read::<u64>();
+            let frame_buffer_pitch = reader.read::<u32>();
+            let frame_buffer_width = reader.read::<u32>();
+            let frame_buffer_height = reader.read::<u32>();
+            let frame_buffer_bpp = reader.read::<u8>();
+            let frame_buffer_type = reader.read::<u8>();
+
+            // Note: the multiboot2 spec says the reserved field is only an u8, but for alignment
+            // to be correct it should be an u16 and in the grub multiboot2 header this field is
+            // defined as an u16.
+            // see https://github.com/rhboot/grub2/blob/fedora-39/include/multiboot2.h#L288
+            let _reserved = reader.read::<u16>();
+
+            let pixel_format = Self::parse_color_info(frame_buffer_type, &mut reader);
+
+            Tag::FrameBufferInfo(FrameBufferInfo {
+                frame_buffer_addr: PhysAddr::new(frame_buffer_addr),
+                frame_buffer_pitch,
+                frame_buffer_width,
+                frame_buffer_height,
+                frame_buffer_bpp,
+                pixel_format,
+            })
+        }
+    }
+    unsafe fn parse_color_info(frame_buffer_type: u8, reader: &mut MemoryReader) -> PixelFormat {
+        unsafe {
+            match frame_buffer_type {
+                0 => {
+                    let mut palette = Vec::new();
+                    let frame_buffer_palette_num_colors = reader.read::<u32>();
+
+                    for _ in 0..frame_buffer_palette_num_colors {
+                        let red = reader.read::<u8>();
+                        let green = reader.read::<u8>();
+                        let blue = reader.read::<u8>();
+
+                        palette.push(RgbColor { red, green, blue });
+                    }
+
+                    PixelFormat::Indexed(IndexedPixelFormat::new(palette))
+                }
+                1 => {
+                    let frame_buffer_red_field_position = reader.read::<u8>();
+                    let frame_buffer_red_mask_size = reader.read::<u8>();
+                    let frame_buffer_green_field_position = reader.read::<u8>();
+                    let frame_buffer_green_mask_size = reader.read::<u8>();
+                    let frame_buffer_blue_field_position = reader.read::<u8>();
+                    let frame_buffer_blue_mask_size = reader.read::<u8>();
+
+                    PixelFormat::RGB(RgbPixelFormat::new(
+                        frame_buffer_red_field_position,
+                        frame_buffer_red_mask_size,
+                        frame_buffer_green_field_position,
+                        frame_buffer_green_mask_size,
+                        frame_buffer_blue_field_position,
+                        frame_buffer_blue_mask_size,
+                    ))
+                }
+                2 => PixelFormat::EGA(EgaPixelFormat::new()),
+                _ => panic!("invalid frame buffer type: {}", frame_buffer_type),
+            }
         }
     }
 }

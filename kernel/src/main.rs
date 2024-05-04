@@ -11,16 +11,21 @@
 // needed for idt.rs
 #![feature(abi_x86_interrupt)]
 
+extern crate alloc;
+
+use log::info;
+use spin::Once;
+
+use boot_info::BootInfoHeader;
+use kernel_graphics::{RgbColor, RgbWriter};
+
 mod arch;
 mod heap;
 mod kresult;
 mod mm;
 mod panic_handler;
 
-extern crate alloc;
-
-use boot_info::BootInfoHeader;
-use log::info;
+static ONCE: Once<()> = Once::new();
 
 #[no_mangle]
 pub extern "C" fn kernel_main(boot_info: &BootInfoHeader, proc_id: usize) -> ! {
@@ -31,6 +36,21 @@ pub extern "C" fn kernel_main(boot_info: &BootInfoHeader, proc_id: usize) -> ! {
     arch::cpu::features::verify();
 
     arch::cpu::init(proc_id);
+
+    ONCE.call_once(|| unsafe {
+        info!("FrameBuffer: {:?}", &boot_info.frame_buffer_info);
+
+        let mut fb = kernel_graphics::RgbFrameBuffer::from_info(&boot_info.frame_buffer_info)
+            .expect("unable to create frame buffer");
+
+        let pixel = fb.make_pixel(RgbColor::new(0, 128, 128));
+
+        for x in 0..100 {
+            for y in 0..100 {
+                fb.put_pixel_xy(x, y, pixel);
+            }
+        }
+    });
 
     info!("[CPU {}]: done", proc_id);
     arch::cpu::halt();

@@ -23,6 +23,7 @@ log = "0.4.21"
 
 memory = { path = "../crates/memory" }
 boot_info = { path = "../crates/boot_info" }
+kernel_graphics = { path = "../crates/kernel_graphics" }
 
 [dependencies.linked_list_allocator]
 version = "0.10.5"
@@ -37,7 +38,7 @@ x86 = "0.52.0"
 
 [target.'cfg(target_arch = "x86")'.dependencies.kernel_logger]
 path = "../crates/kernel_logger"
-features = ["serial-log", "vga-log"]
+features = ["serial-log"]
 
 ########################################
 # Dependencies for architecture x86_64 #
@@ -47,4 +48,4 @@ x86 = "0.52.0"
 
 [target.'cfg(target_arch = "x86_64")'.dependencies.kernel_logger]
 path = "../crates/kernel_logger"
-features = ["serial-log", "vga-log"]
+features = ["serial-log"]

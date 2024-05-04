@@ -7,9 +7,6 @@ use log::{LevelFilter, Log};
 #[cfg(feature = "serial-log")]
 mod serial;
 
-#[cfg(feature = "vga-log")]
-mod text_vga;
-
 struct KernelLogger;
 
 impl Log for KernelLogger {
@@ -21,12 +18,6 @@ impl Log for KernelLogger {
         #[cfg(feature = "serial-log")]
         {
             let mut writer = serial::SERIAL_WRITER.lock();
-            let _ = write!(writer, "[{}]: {}\n", record.level(), record.args());
-        }
-
-        #[cfg(feature = "vga-log")]
-        {
-            let mut writer = text_vga::VGA_WRITER.lock();
             let _ = write!(writer, "[{}]: {}\n", record.level(), record.args());
         }
     }

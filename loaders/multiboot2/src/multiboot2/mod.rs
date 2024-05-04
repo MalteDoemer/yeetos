@@ -1,5 +1,9 @@
 use alloc::{string::String, vec::Vec};
+
+use kernel_graphics::PixelFormat;
 use log::info;
+
+use memory::phys::PhysAddr;
 use memory::virt::VirtAddr;
 
 use self::{tag::Tag, tag_iterator::TagIterator};
@@ -62,6 +66,16 @@ pub struct MultibootModule {
 }
 
 #[derive(Debug)]
+pub struct FrameBufferInfo {
+    pub frame_buffer_addr: PhysAddr,
+    pub frame_buffer_pitch: u32,
+    pub frame_buffer_width: u32,
+    pub frame_buffer_height: u32,
+    pub frame_buffer_bpp: u8,
+    pub pixel_format: PixelFormat,
+}
+
+#[derive(Debug)]
 pub struct Multiboot2Info {
     pub cmdline: Option<String>,
     pub loader_name: Option<String>,
@@ -71,6 +85,7 @@ pub struct Multiboot2Info {
     pub memory_regions: Vec<MemoryRegion>,
     pub image_load_base_physical: Option<u32>,
     pub rsdp_descriptor: Option<RSDPDescriptor>,
+    pub frame_buffer_info: Option<FrameBufferInfo>,
 }
 
 impl Multiboot2Info {
@@ -92,6 +107,7 @@ impl Multiboot2Info {
         let mut memory_regions = Vec::new();
         let mut image_load_base_physical = None;
         let mut rsdp_descriptor = None;
+        let mut frame_buffer_info = None;
 
         for tag in iter {
             match tag {
@@ -104,7 +120,8 @@ impl Multiboot2Info {
                 Tag::ImageLoadBasePhysical(value) => image_load_base_physical = Some(value),
                 Tag::OldRSDP(value) => rsdp_descriptor = Some(RSDPDescriptor::V1(value)),
                 Tag::NewRSDP(value) => rsdp_descriptor = Some(RSDPDescriptor::V2(value)),
-                Tag::Unknown(value) => info!("found unkown multiboot2 tag: {}", value),
+                Tag::FrameBufferInfo(value) => frame_buffer_info = Some(value),
+                Tag::Unknown(value) => info!("found unknown multiboot2 tag: {}", value),
                 Tag::End => {}
             }
         }
@@ -118,6 +135,7 @@ impl Multiboot2Info {
             memory_regions,
             image_load_base_physical,
             rsdp_descriptor,
+            frame_buffer_info,
         }
     }
 

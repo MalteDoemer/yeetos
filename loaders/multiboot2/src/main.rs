@@ -7,10 +7,21 @@
 #![feature(allocator_api)]
 // needed for the heap allocator
 #![feature(alloc_error_handler)]
-// enabled while still in early developement phase
+// enabled while still in early development phase
 #![allow(dead_code)]
 
 extern crate alloc;
+
+use log::info;
+
+use kernel_image::KernelImage;
+use memory::{to_higher_half, virt::VirtAddr};
+use multiboot2::Multiboot2Info;
+
+use crate::{
+    acpi::{make_jump_to_kernel, KERNEL_ENTRY},
+    initrd::Initrd,
+};
 
 mod acpi;
 mod arch;
@@ -21,17 +32,7 @@ mod idt;
 mod initrd;
 mod mmap;
 mod multiboot2;
-mod panic_handling;
-
-use kernel_image::KernelImage;
-use log::info;
-use memory::{to_higher_half, virt::VirtAddr};
-use multiboot2::Multiboot2Info;
-
-use crate::{
-    acpi::{make_jump_to_kernel, KERNEL_ENTRY},
-    initrd::Initrd,
-};
+mod panic_handler;
 
 #[no_mangle]
 pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
@@ -93,7 +94,8 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
         kernel_cmdline.stack_size(),
         kernel_cmdline.initial_heap_size(),
         kernel_file.data(),
-    ).expect("unable to parse the kernel elf image");
+    )
+    .expect("unable to parse the kernel elf image");
 
     let kernel_image_info = kernel_image.kernel_image_info();
 

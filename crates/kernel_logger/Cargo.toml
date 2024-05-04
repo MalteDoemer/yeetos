@@ -12,9 +12,7 @@ spin = "0.9.8"
 x86 = { version = "0.52.0", optional = true }
 
 memory = { path = "../memory" }
-vga = { path = "../vga" }
 
 [features]
 default = []
 serial-log = ["x86"]
-vga-log = []

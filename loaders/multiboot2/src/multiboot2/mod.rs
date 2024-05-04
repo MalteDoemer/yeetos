@@ -143,3 +143,17 @@ impl Multiboot2Info {
         self.modules.iter().find(|module| module.info == name)
     }
 }
+
+impl MultibootModule {
+    pub fn start_addr(&self) -> VirtAddr {
+        VirtAddr::new(self.mod_start as usize)
+    }
+
+    pub fn size(&self) -> usize {
+        (self.mod_end - self.mod_start) as usize
+    }
+
+    pub fn end_addr(&self) -> VirtAddr {
+        self.start_addr() + self.size()
+    }
+}

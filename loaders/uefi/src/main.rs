@@ -9,7 +9,6 @@ mod arch;
 mod boot_info;
 mod bootfs;
 mod heap;
-mod initrd;
 mod paging;
 mod panic_handler;
 mod time;
@@ -18,6 +17,7 @@ extern crate alloc;
 
 use alloc::vec::Vec;
 use bootfs::BootFs;
+// use initrd::Initrd;
 use initrd::Initrd;
 use kernel_image::ParsedKernelImage;
 use log::info;
@@ -82,10 +82,14 @@ fn init(handle: Handle, system_table: &SystemTable<Boot>) {
 
     // Allocate memory for the boot info and INITRD
     let (_boot_info_header, initrd_buffer) =
-        boot_info::allocate_boot_info(boot_services, Initrd::get_number_of_pages(&mut initrd_file));
+        boot_info::allocate_boot_info(boot_services, bootfs.file_size_in_pages(&mut initrd_file));
 
     // Load the INITRD into memory
-    let initrd = Initrd::from_file(&mut initrd_file, initrd_buffer);
+    bootfs
+        .load_file(&mut initrd_file, initrd_buffer)
+        .expect("unable to load initrd file");
+
+    let initrd = Initrd::new(initrd_buffer).expect("unable to parse initrd");
 
     // Search for the kernel command line file in the INITRD
     let cmdline_data = initrd
@@ -119,7 +123,7 @@ fn init(handle: Handle, system_table: &SystemTable<Boot>) {
     )
     .expect("unable to allocate physical pages for the kernel image");
 
-    // Now create a lodable kernel image based on the `use_reloc` command line option.
+    // Now create a loadable kernel image based on the `use_reloc` command line option.
     let kernel_image = if kernel_cmdline.use_reloc() {
         parsed_kernel_image.to_reloc_image(kernel_base)
     } else {
@@ -220,7 +224,7 @@ fn allocate_kernel_pages(
             num_pages,
         )?;
 
-        assert!(ret == kernel_base_phys.to_inner());
+        assert_eq!(ret, kernel_base_phys.to_inner());
 
         Ok(kernel_base)
     }

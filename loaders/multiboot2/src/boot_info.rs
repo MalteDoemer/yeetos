@@ -8,6 +8,7 @@ use boot_info::{
     },
     BootInfoHeader, BOOT_INFO_STRUCT_V1,
 };
+use initrd::Initrd;
 use kernel_graphics::{EgaPixelFormat, FrameBufferInfo, PixelFormat};
 use kernel_image::KernelImageInfo;
 use memory::{
@@ -17,10 +18,7 @@ use memory::{
     MemoryMap, MemoryMapEntry, MEMORY_MAP_ENTRIES,
 };
 
-use crate::{
-    initrd::Initrd,
-    multiboot2::{self, Multiboot2Info},
-};
+use crate::multiboot2::{self, Multiboot2Info};
 
 #[link_section = ".boot_info"]
 static mut BOOT_INFO_HEADER: BootInfoHeader = BootInfoHeader::empty();

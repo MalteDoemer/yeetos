@@ -112,6 +112,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "initrd"
+version = "0.1.0"
+dependencies = [
+ "memory",
+ "tar-no-std 0.3.1",
+]
+
+[[package]]
 name = "kernel_cmdline"
 version = "0.1.0"
 dependencies = [
@@ -158,11 +166,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "90ed8c1e510134f979dbc4f070f87d4313098b704861a105fe34231c70a3901c"
 
 [[package]]
+name = "memchr"
+version = "2.7.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6c8640c5d730cb13ebd907d8d04b52f55ac9a2eec55b440c8892f40d56c76c1d"
+
+[[package]]
 name = "memory"
 version = "0.1.0"
 dependencies = [
  "bitflags 2.5.0",
  "zeroize",
+]
+
+[[package]]
+name = "num-traits"
+version = "0.2.19"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "071dfc062690e90b734c0b2273ce72ad0ffa95f0c74596bc250dcfd960262841"
+dependencies = [
+ "autocfg",
 ]
 
 [[package]]
@@ -284,6 +307,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "tar-no-std"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4d897790ee033615752cc7bf882343881ad748438c01bc7e1b9d6242bf14a2c6"
+dependencies = [
+ "bitflags 2.5.0",
+ "log",
+ "memchr",
+ "num-traits",
+]
+
+[[package]]
 name = "ucs2"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -315,13 +350,14 @@ dependencies = [
  "acpi",
  "boot_info",
  "boot_logger",
+ "initrd",
  "kernel_cmdline",
  "kernel_image",
  "linked_list_allocator",
  "log",
  "memory",
  "spin",
- "tar-no-std",
+ "tar-no-std 0.2.0",
  "uefi",
  "x86",
  "zeroize",

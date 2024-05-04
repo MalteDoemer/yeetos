@@ -112,6 +112,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "initrd"
+version = "0.1.0"
+dependencies = [
+ "memory",
+ "tar-no-std",
+]
+
+[[package]]
 name = "kernel_cmdline"
 version = "0.1.0"
 dependencies = [
@@ -158,6 +166,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "90ed8c1e510134f979dbc4f070f87d4313098b704861a105fe34231c70a3901c"
 
 [[package]]
+name = "memchr"
+version = "2.7.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6c8640c5d730cb13ebd907d8d04b52f55ac9a2eec55b440c8892f40d56c76c1d"
+
+[[package]]
 name = "memory"
 version = "0.1.0"
 dependencies = [
@@ -173,6 +187,7 @@ dependencies = [
  "boot_info",
  "boot_logger",
  "elf",
+ "initrd",
  "kernel_cmdline",
  "kernel_graphics",
  "kernel_image",
@@ -180,8 +195,16 @@ dependencies = [
  "log",
  "memory",
  "spin",
- "tar-no-std",
  "x86",
+]
+
+[[package]]
+name = "num-traits"
+version = "0.2.19"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "071dfc062690e90b734c0b2273ce72ad0ffa95f0c74596bc250dcfd960262841"
+dependencies = [
+ "autocfg",
 ]
 
 [[package]]
@@ -262,13 +285,14 @@ dependencies = [
 
 [[package]]
 name = "tar-no-std"
-version = "0.2.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d87688750eada7aef6d4a0b82979148980c67aca111f62f4bef82827276f3fc5"
+checksum = "4d897790ee033615752cc7bf882343881ad748438c01bc7e1b9d6242bf14a2c6"
 dependencies = [
- "arrayvec",
  "bitflags 2.5.0",
  "log",
+ "memchr",
+ "num-traits",
 ]
 
 [[package]]

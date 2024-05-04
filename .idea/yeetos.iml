@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module type="EMPTY_MODULE" version="4">
+  <component name="NewModuleRootManager">
+    <content url="file://$MODULE_DIR$">
+      <sourceFolder url="file://$MODULE_DIR$/crates/boot_info/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/boot_logger/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/kernel_cmdline/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/kernel_graphics/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/kernel_image/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/kernel_logger/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/memory/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/vga/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/kernel/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/loaders/multiboot2/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/loaders/uefi/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/initrd/src" isTestSource="false" />
+      <excludeFolder url="file://$MODULE_DIR$/crates/boot_info/target" />
+      <excludeFolder url="file://$MODULE_DIR$/crates/boot_logger/target" />
+      <excludeFolder url="file://$MODULE_DIR$/crates/kernel_cmdline/target" />
+      <excludeFolder url="file://$MODULE_DIR$/crates/kernel_graphics/target" />
+      <excludeFolder url="file://$MODULE_DIR$/crates/kernel_image/target" />
+      <excludeFolder url="file://$MODULE_DIR$/crates/kernel_logger/target" />
+      <excludeFolder url="file://$MODULE_DIR$/crates/memory/target" />
+      <excludeFolder url="file://$MODULE_DIR$/crates/vga/target" />
+      <excludeFolder url="file://$MODULE_DIR$/kernel/target" />
+      <excludeFolder url="file://$MODULE_DIR$/loaders/multiboot2/target" />
+      <excludeFolder url="file://$MODULE_DIR$/loaders/uefi/target" />
+      <excludeFolder url="file://$MODULE_DIR$/crates/initrd/target" />
+    </content>
+    <orderEntry type="inheritedJdk" />
+    <orderEntry type="sourceFolder" forTests="false" />
+  </component>
+</module>

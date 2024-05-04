@@ -16,9 +16,9 @@ x86 = "0.52.0"
 spin = "0.9.4"
 log = "0.4.17"
 acpi = "5.0.0"
-tar-no-std = "0.2.0"
 
 memory = { path = "../../crates/memory" }
+initrd = { path = "../../crates/initrd" }
 boot_info = { path = "../../crates/boot_info" }
 boot_logger = { path = "../../crates/boot_logger" }
 kernel_image = { path = "../../crates/kernel_image" }

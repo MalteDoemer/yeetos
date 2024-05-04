@@ -12,16 +12,13 @@
 
 extern crate alloc;
 
-use log::info;
-
+use initrd::Initrd;
 use kernel_image::KernelImage;
+use log::info;
 use memory::{to_higher_half, virt::VirtAddr};
 use multiboot2::Multiboot2Info;
 
-use crate::{
-    acpi::{make_jump_to_kernel, KERNEL_ENTRY},
-    initrd::Initrd,
-};
+use crate::acpi::{make_jump_to_kernel, KERNEL_ENTRY};
 
 mod acpi;
 mod arch;
@@ -29,7 +26,6 @@ mod boot_info;
 mod devices;
 mod heap;
 mod idt;
-mod initrd;
 mod mmap;
 mod multiboot2;
 mod panic_handler;
@@ -62,7 +58,16 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
     let num_cores = acpi::number_of_cores(&acpi_tables);
 
     // Get the INITRD module loaded by the multiboot2 loader
-    let initrd = Initrd::from_multiboot_info(&mboot_info).expect("initrd module not found");
+    let initrd_module = mboot_info
+        .module_by_name("initrd")
+        .expect("initrd module not found");
+
+    // Safety:
+    // The memory from a multiboot2 module is assumed to be safely accessible.
+    let initrd = unsafe {
+        Initrd::from_addr_size(initrd_module.start_addr(), initrd_module.size())
+            .expect("unable to parse initrd")
+    };
 
     let cmdline_data = initrd
         .file_by_name("cmdline")

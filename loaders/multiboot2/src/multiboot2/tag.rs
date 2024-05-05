@@ -3,12 +3,14 @@ use alloc::{
     vec::Vec,
 };
 
-use kernel_graphics::{EgaPixelFormat, IndexedPixelFormat, PixelFormat, RgbColor, RgbPixelFormat};
+use kernel_graphics::{
+    EgaPixelFormat, FrameBufferInfo, IndexedPixelFormat, PixelFormat, RgbColor, RgbPixelFormat,
+};
 use memory::{phys::PhysAddr, virt::MemoryReader};
 
 use super::{
-    tag_info::*, BasicMemoryInfo, BiosBootDevice, FrameBufferInfo, MemoryRegion, MultibootModule,
-    RSDPDescriptorV1, RSDPDescriptorV2,
+    tag_info::*, BasicMemoryInfo, BiosBootDevice, MemoryRegion, MultibootModule, RSDPDescriptorV1,
+    RSDPDescriptorV2,
 };
 
 pub(crate) enum Tag {
@@ -234,10 +236,10 @@ impl Tag {
         // function contract assures a valid tag
         unsafe {
             let frame_buffer_addr = reader.read::<u64>();
-            let frame_buffer_pitch = reader.read::<u32>();
-            let frame_buffer_width = reader.read::<u32>();
-            let frame_buffer_height = reader.read::<u32>();
-            let frame_buffer_bpp = reader.read::<u8>();
+            let pitch = reader.read::<u32>() as usize;
+            let width = reader.read::<u32>() as usize;
+            let height = reader.read::<u32>() as usize;
+            let bits_per_pixel = reader.read::<u8>() as usize;
             let frame_buffer_type = reader.read::<u8>();
 
             // Note: the multiboot2 spec says the reserved field is only an u8, but for alignment
@@ -248,14 +250,16 @@ impl Tag {
 
             let pixel_format = Self::parse_color_info(frame_buffer_type, &mut reader);
 
-            Tag::FrameBufferInfo(FrameBufferInfo {
-                frame_buffer_addr: PhysAddr::new(frame_buffer_addr),
-                frame_buffer_pitch,
-                frame_buffer_width,
-                frame_buffer_height,
-                frame_buffer_bpp,
+            let phys_addr = PhysAddr::new(frame_buffer_addr.try_into().unwrap());
+
+            Tag::FrameBufferInfo(FrameBufferInfo::new(
+                phys_addr.to_virt(),
+                pitch,
+                width,
+                height,
+                bits_per_pixel,
                 pixel_format,
-            })
+            ))
         }
     }
     unsafe fn parse_color_info(frame_buffer_type: u8, reader: &mut MemoryReader) -> PixelFormat {

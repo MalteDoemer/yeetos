@@ -194,6 +194,7 @@ dependencies = [
  "linked_list_allocator",
  "log",
  "memory",
+ "serial",
  "spin",
  "x86",
 ]
@@ -256,6 +257,14 @@ name = "scopeguard"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d29ab0c6d3fc0ee92fe66e2d99f700eab17a8d57d1c1d3b748380fb20baa78cd"
+
+[[package]]
+name = "serial"
+version = "0.1.0"
+dependencies = [
+ "spin",
+ "x86",
+]
 
 [[package]]
 name = "spin"

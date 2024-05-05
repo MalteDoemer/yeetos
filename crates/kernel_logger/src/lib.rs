@@ -4,9 +4,6 @@ use core::fmt::Write;
 
 use log::{LevelFilter, Log};
 
-#[cfg(feature = "serial-log")]
-mod serial;
-
 struct KernelLogger;
 
 impl Log for KernelLogger {

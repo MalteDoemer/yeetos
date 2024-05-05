@@ -9,10 +9,8 @@ use boot_info::{
     BootInfoHeader, BOOT_INFO_STRUCT_V1,
 };
 use initrd::Initrd;
-use kernel_graphics::{EgaPixelFormat, FrameBufferInfo, PixelFormat};
 use kernel_image::KernelImageInfo;
 use memory::{
-    phys::PhysAddr,
     to_higher_half,
     virt::{Page, VirtAddr, VirtualRange},
     MemoryMap, MemoryMapEntry, MEMORY_MAP_ENTRIES,
@@ -48,7 +46,7 @@ pub fn init_boot_info<'a>(
 
     boot_info.kernel_image_info = get_kernel_image_info(kernel_image_info);
 
-    boot_info.frame_buffer_info = get_frame_buffer_info(mboot);
+    boot_info.frame_buffer_info = mboot.frame_buffer_info.clone().unwrap_or_default();
 
     boot_info.platform_info = get_platform_info(mboot);
     boot_info.memory_map = get_memory_map(map);
@@ -71,35 +69,6 @@ fn get_kernel_image_info(kernel_image_info: &KernelImageInfo) -> KernelImageInfo
         data: translate_optional_range_to_higher_half(kernel_image_info.data),
         heap: translate_range_to_higher_half(kernel_image_info.heap),
     }
-}
-
-fn get_frame_buffer_info(mboot: &Multiboot2Info) -> FrameBufferInfo {
-    const DEFAULT_FB: multiboot2::FrameBufferInfo = multiboot2::FrameBufferInfo {
-        frame_buffer_addr: PhysAddr::new(0xb80ff),
-        frame_buffer_pitch: 160,
-        frame_buffer_width: 80,
-        frame_buffer_height: 25,
-        frame_buffer_bpp: 16,
-        pixel_format: PixelFormat::EGA(EgaPixelFormat::new()),
-    };
-
-    let mboot_frame_buffer = mboot.frame_buffer_info.as_ref().unwrap_or(&DEFAULT_FB);
-
-    let base_address = to_higher_half(mboot_frame_buffer.frame_buffer_addr.to_virt());
-
-    let pitch = mboot_frame_buffer.frame_buffer_pitch as usize;
-    let width = mboot_frame_buffer.frame_buffer_width as usize;
-    let height = mboot_frame_buffer.frame_buffer_height as usize;
-    let bits_per_pixel = mboot_frame_buffer.frame_buffer_bpp as usize;
-
-    FrameBufferInfo::new(
-        base_address,
-        pitch,
-        width,
-        height,
-        bits_per_pixel,
-        mboot_frame_buffer.pixel_format.clone(),
-    )
 }
 
 fn translate_range_to_higher_half(range: VirtualRange) -> VirtualRange {

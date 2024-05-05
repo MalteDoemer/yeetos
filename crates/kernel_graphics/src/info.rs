@@ -99,6 +99,19 @@ impl FrameBufferInfo {
     }
 }
 
+impl Default for FrameBufferInfo {
+    fn default() -> Self {
+        Self::new(
+            0xb8000.into(),
+            160,
+            80,
+            25,
+            16,
+            PixelFormat::EGA(EgaPixelFormat::new()),
+        )
+    }
+}
+
 impl IndexedPixelFormat {
     pub const fn new(color_pallet: Vec<RgbColor>) -> Self {
         Self { color_pallet }

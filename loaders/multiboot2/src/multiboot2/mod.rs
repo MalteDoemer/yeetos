@@ -1,6 +1,6 @@
 use alloc::{string::String, vec::Vec};
 
-use kernel_graphics::PixelFormat;
+use kernel_graphics::{FrameBufferInfo, PixelFormat};
 use log::info;
 
 use memory::phys::PhysAddr;
@@ -63,16 +63,6 @@ pub struct MultibootModule {
     pub mod_start: u32,
     pub mod_end: u32,
     pub info: String,
-}
-
-#[derive(Debug)]
-pub struct FrameBufferInfo {
-    pub frame_buffer_addr: PhysAddr,
-    pub frame_buffer_pitch: u32,
-    pub frame_buffer_width: u32,
-    pub frame_buffer_height: u32,
-    pub frame_buffer_bpp: u8,
-    pub pixel_format: PixelFormat,
 }
 
 #[derive(Debug)]

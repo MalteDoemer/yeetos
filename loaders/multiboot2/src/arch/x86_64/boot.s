@@ -218,11 +218,14 @@ long_mode_error:
     movl $long_mode_error_msg, %esi
     jmp display_error
 
+// This function writes an error message into the vga memory as well as
+// to the serial console.
 // Arguments:
 //      %esi: pointer to the message (null-terminated) 
 display_error:
     movl $0xb8000, %edi         // we want to write to the vga memory at 0xb8000
     movb $VGA_COLOR, %ah        // set the color to white text with black background
+    movw $0x3F8, %dx            // we also want to write the message to port 0x3F8
 
 1:
     lodsb                       // load a character from the message into %al and increment %esi
@@ -230,7 +233,9 @@ display_error:
     testb %al, %al              // check for the null-byte
     jz hang                     // and exit the loop
 
-    stosw                       // write the character plus the color into the vga memory and increment %edi    
+    stosw                       // write the character plus the color into the vga memory and increment %edi
+    outb %al, %dx               // also write the character to the serial output port
+
     jmp 1b                      // continue the loop
 
 hang:

@@ -4,6 +4,7 @@ use memory::virt::VirtAddr;
 use tar_no_std::{ArchiveEntry, CorruptDataError, TarArchiveRef};
 
 /// A wrapper object around the INITRD tar archive. The INITRD is always read-only.
+#[derive(Debug, Clone)]
 pub struct Initrd<'a> {
     data: &'a [u8],
     tar_archive: TarArchiveRef<'a>,

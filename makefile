@@ -28,10 +28,12 @@ KERNEL_DIR:=$(TOP_DIR)kernel
 KERNEL_BIN:=$(KERNEL_DIR)/target/$(TARGET)/$(CONFIG)/kernel
 
 KERNEL_CMDLINE:=$(TOP_DIR)kernel_cmdline.cfg
+KERNEL_FONT_SRC:=/usr/share/kbd/consolefonts/eurlatgr.psfu.gz
 
 INITRD:=$(OUT_DIR)/initrd
 ISO=$(OUT_DIR)/yeetos.iso
 UEFI_IMG=$(OUT_DIR)/uefi.img
+KERNEL_FONT_OUT:=$(OUT_DIR)/eurlatgr.psfu
 
 QEMU_ARGS:= -smp cpus=$(CORES) -m $(MEMORY)
 
@@ -70,9 +72,9 @@ $(UEFI_BIN): FORCE
 $(MULTIBOOT2_BIN): FORCE
 	@cd $(MULTIBOOT2_DIR) && cargo build --profile=$(PROFILE) --target triplets/$(TARGET).json
 
-$(INITRD): $(KERNEL_BIN) $(KERNEL_CMDLINE)
+$(INITRD): $(KERNEL_BIN) $(KERNEL_CMDLINE) $(KERNEL_FONT_OUT)
 	@mkdir -p $(OUT_DIR)
-	@$(TOP_DIR)/scripts/mkinitrd.sh -o $(INITRD) -k $(KERNEL_BIN) -c $(KERNEL_CMDLINE)
+	@$(TOP_DIR)/scripts/mkinitrd.sh -o $(INITRD) -k $(KERNEL_BIN) -c $(KERNEL_CMDLINE) -f $(KERNEL_FONT_OUT)
 
 $(UEFI_IMG): $(INITRD) $(UEFI_BIN)
 	@$(TOP_DIR)/scripts/mkimg.sh -o $(UEFI_IMG) -s $(IMAGE_SIZE) -a $(ARCH) -l $(UEFI_BIN) -i $(INITRD)
@@ -81,9 +83,14 @@ $(ISO): $(INITRD) $(MULTIBOOT2_BIN)
 	@mkdir -p $(OUT_DIR)
 	@$(TOP_DIR)/scripts/mkiso.sh -o $(ISO) -l $(MULTIBOOT2_BIN) -i $(INITRD)
 
+$(KERNEL_FONT_OUT): $(KERNEL_FONT_SRC)
+	@cp $(KERNEL_FONT_SRC) $(OUT_DIR)/font.gz
+	@gunzip $(OUT_DIR)/font.gz
+	@mv $(OUT_DIR)/font $(KERNEL_FONT_OUT)
+
 
 clean:
-	@rm -f $(INITRD) $(ISO) $(UEFI_IMG)
+	@rm -f $(INITRD) $(KERNEL_FONT_OUT) $(ISO) $(UEFI_IMG)
 
 clean-all: clean
 	@cd $(KERNEL_DIR) && cargo clean

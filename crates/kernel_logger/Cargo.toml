@@ -9,10 +9,9 @@ edition = "2021"
 log = "0.4.21"
 spin = "0.9.8"
 
-x86 = { version = "0.52.0", optional = true }
-
 memory = { path = "../memory" }
+serial = { path = "../serial", optional = true }
 
 [features]
 default = []
-serial-log = ["x86"]
+serial-log = ["serial"]

@@ -48,15 +48,6 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
     // mboot_ptr is passed by boot.s and assumed to be correct.
     let mboot_info = unsafe { Multiboot2Info::new(VirtAddr::new(mboot_ptr)) };
 
-    // Parse the ACPI tables
-    let acpi_tables = acpi::get_acpi_tables(
-        &mboot_info
-            .rsdp_descriptor
-            .expect("rsdp descriptor not present"),
-    );
-
-    let num_cores = acpi::number_of_cores(&acpi_tables);
-
     // Get the INITRD module loaded by the multiboot2 loader
     let initrd_module = mboot_info
         .module_by_name("initrd")
@@ -68,6 +59,15 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
         Initrd::from_addr_size(initrd_module.start_addr(), initrd_module.size())
             .expect("unable to parse initrd")
     };
+    
+    // Parse the ACPI tables
+    let acpi_tables = acpi::get_acpi_tables(
+        &mboot_info
+            .rsdp_descriptor
+            .expect("rsdp descriptor not present"),
+    );
+
+    let num_cores = acpi::number_of_cores(&acpi_tables);
 
     let cmdline_data = initrd
         .file_by_name("cmdline")

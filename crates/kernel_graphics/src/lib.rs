@@ -4,12 +4,10 @@
 #![no_std]
 
 mod info;
-mod rgb_frame_buffer;
 
 extern crate alloc;
 
 pub use info::{EgaPixelFormat, FrameBufferInfo, IndexedPixelFormat, PixelFormat, RgbPixelFormat};
-pub use rgb_frame_buffer::{RgbFrameBuffer, RgbFrameBufferError};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct RgbColor {

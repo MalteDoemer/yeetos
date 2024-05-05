@@ -15,7 +15,7 @@ extern crate alloc;
 use initrd::Initrd;
 use kernel_image::KernelImage;
 use log::info;
-use memory::{to_higher_half, virt::VirtAddr};
+use memory::virt::VirtAddr;
 use multiboot2::Multiboot2Info;
 
 use crate::acpi::{make_jump_to_kernel, KERNEL_ENTRY};
@@ -59,7 +59,7 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
         Initrd::from_addr_size(initrd_module.start_addr(), initrd_module.size())
             .expect("unable to parse initrd")
     };
-    
+
     // Parse the ACPI tables
     let acpi_tables = acpi::get_acpi_tables(
         &mboot_info
@@ -135,7 +135,7 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
 
     // Get the entry point address from the kernel image and translate it into
     // a higher-half address.
-    let entry_point = to_higher_half(kernel_image.kernel_entry_point());
+    let entry_point = kernel_image.kernel_entry_point().to_higher_half();
 
     // Initialize the boot_info header
     boot_info::init_boot_info(&mboot_info, &memory_map, &initrd, &kernel_image_info);

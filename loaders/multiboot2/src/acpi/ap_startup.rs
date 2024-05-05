@@ -3,7 +3,7 @@ use core::sync::atomic::{AtomicUsize, Ordering};
 use acpi::{platform::ProcessorState, AcpiTables};
 use kernel_image::KernelImage;
 use log::info;
-use memory::{to_higher_half, virt::VirtAddr};
+use memory::virt::VirtAddr;
 use spin::Once;
 
 use crate::{acpi::IdentityMapAcpiHandler, arch::paging, boot_info, idt};
@@ -102,7 +102,7 @@ pub fn make_jump_to_kernel(processor_id: usize, entry_point_addr: VirtAddr) -> !
     let boot_info = boot_info::get_boot_info_addr();
 
     // calculate stack
-    let stacks_base = to_higher_half(KERNEL_STACKS_VADDR.load(Ordering::SeqCst).into());
+    let stacks_base = VirtAddr::new(KERNEL_STACKS_VADDR.load(Ordering::SeqCst)).to_higher_half();
     let stack_size = KERNEL_STACK_SIZE.load(Ordering::SeqCst);
     let stack_addr = stacks_base + processor_id * stack_size;
 

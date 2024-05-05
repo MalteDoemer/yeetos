@@ -17,7 +17,6 @@ extern crate alloc;
 
 use alloc::vec::Vec;
 use bootfs::BootFs;
-// use initrd::Initrd;
 use initrd::Initrd;
 use kernel_image::ParsedKernelImage;
 use log::info;
@@ -43,8 +42,7 @@ fn main(handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
     // Call exit_boot_services to transition over to full control over the system
     let (_runtime_table, _mmap) = system_table.exit_boot_services(MemoryType::LOADER_DATA);
 
-    panic!("done!");
-    // arch::halt();
+    panic!("finished with main()");
 }
 
 fn init(handle: Handle, system_table: &SystemTable<Boot>) {

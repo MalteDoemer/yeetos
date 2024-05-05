@@ -11,7 +11,6 @@ use boot_info::{
 use initrd::Initrd;
 use kernel_image::KernelImageInfo;
 use memory::{
-    to_higher_half,
     virt::{Page, VirtAddr, VirtualRange},
     MemoryMap, MemoryMapEntry, MEMORY_MAP_ENTRIES,
 };
@@ -24,7 +23,7 @@ static mut BOOT_INFO_HEADER: BootInfoHeader = BootInfoHeader::empty();
 /// Get the higher-half address of the boot_info header.
 pub fn get_boot_info_addr() -> VirtAddr {
     let boot_info_ptr = unsafe { addr_of_mut!(BOOT_INFO_HEADER) };
-    to_higher_half((boot_info_ptr as usize).into())
+    VirtAddr::new(boot_info_ptr as usize).to_higher_half()
 }
 
 pub fn init_boot_info<'a>(
@@ -38,7 +37,7 @@ pub fn init_boot_info<'a>(
     let boot_info = unsafe { &mut *addr_of_mut!(BOOT_INFO_HEADER) };
 
     let boot_info_start = get_boot_info_addr();
-    let boot_info_end = to_higher_half(initrd.end_addr());
+    let boot_info_end = initrd.end_addr().to_higher_half();
 
     boot_info.boot_info_addr = boot_info_start;
     boot_info.boot_info_size = boot_info_end - boot_info_start;
@@ -55,7 +54,7 @@ pub fn init_boot_info<'a>(
         boot_info.boot_logger = *log;
     });
 
-    boot_info.initrd_addr = to_higher_half(initrd.start_addr());
+    boot_info.initrd_addr = initrd.start_addr().to_higher_half();
     boot_info.initrd_size = initrd.size();
 }
 
@@ -72,7 +71,7 @@ fn get_kernel_image_info(kernel_image_info: &KernelImageInfo) -> KernelImageInfo
 }
 
 fn translate_range_to_higher_half(range: VirtualRange) -> VirtualRange {
-    let page = Page::new(to_higher_half(range.start_addr()));
+    let page = Page::new(range.start_addr().to_higher_half());
     VirtualRange::new(page, range.num_pages())
 }
 

@@ -1,9 +1,9 @@
 use alloc::vec::Vec;
 use elf::{abi::PT_LOAD, endian::LittleEndian, segment::ProgramHeader, ElfBytes, ParseError};
 use memory::{
-    to_lower_half,
+    is_identity_mapped_higher_half_address, to_lower_half_virt,
     virt::{Page, VirtAddr, VirtualRange},
-    KERNEL_BASE, PAGE_SHIFT, PAGE_SIZE,
+    PAGE_SHIFT, PAGE_SIZE,
 };
 
 use crate::KernelImageInfo;
@@ -211,7 +211,8 @@ impl<'a> ParsedKernelImage<'a> {
 
     /// This calculates the lower half address of the start of the image when using fixed mode
     pub fn fixed_load_addr(&self) -> VirtAddr {
-        let image_base = to_lower_half(self.phdrs.first_segment_addr());
+        let image_base = to_lower_half_virt(self.phdrs.first_segment_addr())
+            .expect("image base is not a higher half address");
         image_base - self.total_stack_size()
     }
 
@@ -239,7 +240,8 @@ impl<'a> ParsedKernelImage<'a> {
         }
 
         // the image_base must (for now) be a higher half address
-        if !is_higher_half_address(self.phdrs.first_segment_addr().to_inner()) {
+
+        if !is_identity_mapped_higher_half_address(self.phdrs.first_segment_addr()) {
             return Err(KernelImageError::ImageBaseNotHigherHalf);
         }
 
@@ -280,7 +282,8 @@ impl<'a> ParsedKernelImage<'a> {
     }
 
     pub fn to_fixed_image(self) -> Result<KernelImage<'a>, KernelImageError> {
-        let image_base_mem = to_lower_half(self.phdrs.first_segment_addr());
+        let image_base_mem = to_lower_half_virt(self.phdrs.first_segment_addr())
+            .expect("image base is not a higher half address");
 
         self.to_image(image_base_mem, false)
     }
@@ -559,13 +562,14 @@ impl<'a> KernelImage<'a> {
             unsafe {
                 let mut data = core::ptr::read(ptr);
 
-                if is_higher_half_address(data) {
-                    let addr = VirtAddr::new(data);
+                let addr = VirtAddr::new(data);
+
+                if is_identity_mapped_higher_half_address(addr) {
                     let reloc = image_base_mem + (addr - image_base_file);
                     data = reloc.to_inner();
+                    core::ptr::write(ptr, data);
                 }
 
-                core::ptr::write(ptr, data);
                 ptr = ptr.add(1);
             }
         }
@@ -573,171 +577,7 @@ impl<'a> KernelImage<'a> {
         Ok(())
     }
 }
-/*
-    fn new_reloc(base_addr: VirtAddr, parsed: ParsedKernelImage) -> KernelImage {
-        let image_base_file = parsed.phdrs.first_segment_addr();
-        let image_base_mem = base_addr + parsed.total_stack_size();
-
-        let info = Self::get_image_info(
-            image_base_mem,
-            &parsed.phdrs,
-            parsed.num_cores,
-            parsed.stack_size,
-            parsed.heap_size,
-        );
-
-        let entry_point = Self::get_entry_point(&parsed.elf_image, image_base_file, image_base_mem);
-
-        KernelImage {
-            parsed,
-            info,
-            entry_point,
-        }
-    }
-
-    fn new_fixed(parsed: ParsedKernelImage) -> KernelImage {
-        let image_base_file = parsed.phdrs.first_segment_addr();
-        let image_base_mem = image_base_file;
-
-        let info = Self::get_image_info(
-            image_base_mem,
-            &parsed.phdrs,
-            parsed.num_cores,
-            parsed.stack_size,
-            parsed.heap_size,
-        );
-
-        let entry_point = Self::get_entry_point(&parsed.elf_image, image_base_file, image_base_mem);
-
-        KernelImage {
-            parsed,
-            info,
-            entry_point,
-        }
-    }
-
-    fn get_entry_point(
-        elf_image: &'a ElfBytes<'a, LittleEndian>,
-        image_base_file: FileAddr,
-        image_base_mem: VirtAddr,
-    ) -> VirtAddr {
-        let file_addr = FileAddr::new(elf_image.ehdr.e_entry as usize);
-
-        image_base_mem + (file_addr - image_base_file)
-    }
-
-    fn get_image_info(
-        image_base_mem: VirtAddr,
-        phdrs: &ProgramHeaders,
-        num_cores: usize,
-        stack_size: usize,
-        heap_size: usize,
-    ) -> KernelImageInfo {
-        let image_base_file = phdrs.first_segment_addr();
-
-        let stack = Self::get_stack_segment(image_base_mem, num_cores, stack_size);
-
-        let rodata =
-            Self::get_optional_segment_from_phdr(phdrs.rodata, image_base_file, image_base_mem);
-
-        let code = Self::get_segment_from_phdr(phdrs.code, image_base_file, image_base_mem);
-
-        let relro =
-            Self::get_optional_segment_from_phdr(phdrs.relro, image_base_file, image_base_mem);
-
-        let data =
-            Self::get_optional_segment_from_phdr(phdrs.data, image_base_file, image_base_mem);
-
-        let heap = Self::get_heap_segment(image_base_mem, phdrs.total_size(), heap_size);
-
-        KernelImageInfo {
-            stack,
-            rodata,
-            code,
-            relro,
-            data,
-            heap,
-        }
-    }
-
-    /// This function computes the range of virtual memory occupied by the stacks.
-    /// - `image_base_mem` is the calculated address of the first non-stack segment in memory
-    fn get_stack_segment(
-        image_base_mem: VirtAddr,
-        num_cores: usize,
-        stack_size: usize,
-    ) -> VirtualRange {
-        let stack_size = num_cores * stack_size;
-        let stack_start = image_base_mem - stack_size;
-        let stack_end = image_base_mem;
-
-        let start_page = Page::new(stack_start);
-        let end_page = Page::new(stack_end.page_align_up_checked().unwrap());
-
-        VirtualRange::new_diff(start_page, end_page)
-    }
-
-    /// This function computes the range of virtual memory occupied by the heap.
-    ///
-    /// - `image_base_mem` is the calculated address of the first non-stack segment in memory
-    /// - `total_segments_size` is the size of all .rodata, .code, .relro, .data segments.
-    ///
-    fn get_heap_segment(
-        image_base_mem: VirtAddr,
-        total_segments_size: usize,
-        heap_size: usize,
-    ) -> VirtualRange {
-        let heap_start = image_base_mem + total_segments_size;
-
-        let heap_end = heap_start + kernel_heap_size;
-
-        let start_page = Page::new(heap_start);
-        let end_page = Page::new(heap_end.page_align_up_checked().unwrap());
-
-        VirtualRange::new_diff(start_page, end_page)
-    }
-
-    /// This function computes the range of virtual memory the given PHDR is going to occupy.
-    ///
-    /// - `image_base_file` is the image base this executable was compiled with (i.e. --image-base=... argument to the linker)
-    /// - `image_base_mem` is the calculated address of the first non-stack segment in memory
-    ///
-    /// # Note
-    /// When creating the image with `new_fixed()` then `image_base_file = image_base_mem`.
-    /// Otherwise they might differ since the kernel is compiled with position independant code enabled.
-    fn get_segment_from_phdr(
-        phdr: ProgramHeader,
-        image_base_file: FileAddr,
-        image_base_mem: VirtAddr,
-    ) -> VirtualRange {
-        // Note: casts from u64 to usize are still correct on 32-bit targets
-        let addr_in_file = FileAddr::new(phdr.p_vaddr as usize);
-        let offset = addr_in_file - image_base_file;
-
-        let segment_start = image_base_mem + offset;
-        let segment_end = segment_start + phdr.p_memsz as usize;
-
-        let start_page = Page::new(segment_start);
-        let end_page = Page::new(segment_end.page_align_up_checked().unwrap());
-
-        VirtualRange::new_diff(start_page, end_page)
-    }
-
-    /// See `get_segment_from_phdr()`
-    fn get_optional_segment_from_phdr(
-        phdr: Option<ProgramHeader>,
-        image_base_file: VirtAddr,
-        image_base_mem: VirtAddr,
-    ) -> Option<VirtualRange> {
-        phdr.map(|phdr| Self::get_segment_from_phdr(phdr, image_base_file, image_base_mem))
-    }
-}
-*/
 
 fn is_page_aligned(val: usize) -> bool {
     (val >> PAGE_SHIFT) << PAGE_SHIFT == val
-}
-
-fn is_higher_half_address(addr: usize) -> bool {
-    addr >= KERNEL_BASE
 }

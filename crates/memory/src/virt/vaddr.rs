@@ -1,6 +1,6 @@
 use core::{fmt, ops};
 
-use crate::{phys::PhysAddr, PAGE_SHIFT, PAGE_SIZE};
+use crate::{phys::PhysAddr, virt_to_higher_half_checked, PAGE_SHIFT, PAGE_SIZE};
 
 pub struct TryFromPhysAddrError;
 
@@ -62,11 +62,30 @@ impl VirtAddr {
 
     /// Casts this virtual address to a physical address.
     /// This does a bit by bit conversion, not a translation.
+    pub fn to_phys_checked(self) -> Option<PhysAddr> {
+        self.try_into().ok()
+    }
+
+    /// Casts this virtual address to a physical address.
+    /// This does a bit by bit conversion, not a translation.
     ///
     /// ## Panics
     /// Panics if the virtual address is to big to fit in a physical address.
     pub fn to_phys(self) -> PhysAddr {
         self.try_into().unwrap()
+    }
+
+    /// Translates a lower-half virtual address to a higher-half virtual address.
+    pub fn to_higher_half_checked(self) -> Option<VirtAddr> {
+        virt_to_higher_half_checked(self)
+    }
+
+    /// Translates a lower-half virtual address to a higher-half virtual address.
+    /// # Panics
+    /// Panics if the translation fails, i.e. if `self` is not a correct lower-half address.
+    pub fn to_higher_half(self) -> VirtAddr {
+        self.to_higher_half_checked()
+            .expect("unable to translate address to higher half")
     }
 }
 

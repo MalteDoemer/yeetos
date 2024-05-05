@@ -5,13 +5,11 @@
 
 mod info;
 mod rgb_frame_buffer;
-mod rgb_writer;
 
 extern crate alloc;
 
 pub use info::{EgaPixelFormat, FrameBufferInfo, IndexedPixelFormat, PixelFormat, RgbPixelFormat};
 pub use rgb_frame_buffer::{RgbFrameBuffer, RgbFrameBufferError};
-pub use rgb_writer::RgbWriter;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct RgbColor {

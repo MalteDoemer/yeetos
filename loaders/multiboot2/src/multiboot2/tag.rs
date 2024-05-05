@@ -253,7 +253,7 @@ impl Tag {
             let phys_addr = PhysAddr::new(frame_buffer_addr.try_into().unwrap());
 
             Tag::FrameBufferInfo(FrameBufferInfo::new(
-                phys_addr.to_virt(),
+                phys_addr,
                 pitch,
                 width,
                 height,

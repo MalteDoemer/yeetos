@@ -34,39 +34,39 @@ pub enum RgbFrameBufferError {
 }
 
 impl<'a> RgbFrameBuffer<'a> {
-    /// Creates a new `RgbFrameBuffer` from a frame buffer info struct.
-    ///
-    /// # Safety
-    /// This instance of `RgbFrameBuffer<'a>` must have exclusive write access to the memory
-    /// pointed to by `frame_buffer_info.base_address` with size (in bytes)
-    /// `frame_buffer_info.pitch() * frame_buffer_info.height()` for the duration of `'a`
-    pub unsafe fn from_info(
-        frame_buffer_info: &FrameBufferInfo,
-    ) -> Result<RgbFrameBuffer<'a>, RgbFrameBufferError> {
-        let format = Self::do_checks(&frame_buffer_info)?;
+    // /// Creates a new `RgbFrameBuffer` from a frame buffer info struct.
+    // ///
+    // /// # Safety
+    // /// This instance of `RgbFrameBuffer<'a>` must have exclusive write access to the memory
+    // /// pointed to by `frame_buffer_info.base_address` with size (in bytes)
+    // /// `frame_buffer_info.pitch() * frame_buffer_info.height()` for the duration of `'a`
+    // pub unsafe fn from_info(
+    //     frame_buffer_info: &FrameBufferInfo,
+    // ) -> Result<RgbFrameBuffer<'a>, RgbFrameBufferError> {
+    //     let format = Self::do_checks(&frame_buffer_info)?;
+    // 
+    //     let ptr = frame_buffer_info
+    //         .base_address()
+    //         .as_ptr_mut::<VolatileCell<u32>>();
+    // 
+    //     let size_in_bytes = frame_buffer_info.pitch() * frame_buffer_info.height();
+    //     let len = size_in_bytes / 4;
+    // 
+    //     // Safety: fuction contract ensures exclusive access
+    //     let slice = unsafe { core::slice::from_raw_parts_mut(ptr, len) };
+    // 
+    //     Ok(Self::new(
+    //         slice,
+    //         frame_buffer_info.pitch(),
+    //         frame_buffer_info.width(),
+    //         frame_buffer_info.height(),
+    //         format.red_field_position(),
+    //         format.green_field_position(),
+    //         format.blue_field_position(),
+    //     ))
+    // }
 
-        let ptr = frame_buffer_info
-            .base_address()
-            .as_ptr_mut::<VolatileCell<u32>>();
-
-        let size_in_bytes = frame_buffer_info.pitch() * frame_buffer_info.height();
-        let len = size_in_bytes / 4;
-
-        // Safety: fuction contract ensures exclusive access
-        let slice = unsafe { core::slice::from_raw_parts_mut(ptr, len) };
-
-        Ok(Self::new(
-            slice,
-            frame_buffer_info.pitch(),
-            frame_buffer_info.width(),
-            frame_buffer_info.height(),
-            format.red_field_position(),
-            format.green_field_position(),
-            format.blue_field_position(),
-        ))
-    }
-
-    fn do_checks(
+    fn _do_checks(
         frame_buffer_info: &FrameBufferInfo,
     ) -> Result<&RgbPixelFormat, RgbFrameBufferError> {
         // the bits-per-pixel has to be 32

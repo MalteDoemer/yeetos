@@ -1,10 +1,10 @@
 use crate::RgbColor;
 use alloc::vec::Vec;
-use memory::virt::VirtAddr;
+use memory::phys::PhysAddr;
 
 #[derive(Debug, Clone)]
 pub struct FrameBufferInfo {
-    base_address: VirtAddr,
+    base_address: PhysAddr,
     pitch: usize,
     width: usize,
     height: usize,
@@ -40,7 +40,7 @@ pub struct EgaPixelFormat {}
 impl FrameBufferInfo {
     pub const fn empty() -> Self {
         Self {
-            base_address: VirtAddr::zero(),
+            base_address: PhysAddr::zero(),
             pitch: 0,
             width: 0,
             height: 0,
@@ -50,7 +50,7 @@ impl FrameBufferInfo {
     }
 
     pub const fn new(
-        base_address: VirtAddr,
+        base_address: PhysAddr,
         pitch: usize,
         width: usize,
         height: usize,
@@ -67,8 +67,8 @@ impl FrameBufferInfo {
         }
     }
 
-    /// The virtual address of the frame buffer memory.
-    pub fn base_address(&self) -> VirtAddr {
+    /// The physical address of the frame buffer memory.
+    pub fn base_address(&self) -> PhysAddr {
         self.base_address
     }
 

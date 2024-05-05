@@ -12,7 +12,7 @@ IMAGE_SIZE=64M
 
 # qemu options
 MEMORY=4G
-CORES=4
+CORES=8
 
 # end configuration
 

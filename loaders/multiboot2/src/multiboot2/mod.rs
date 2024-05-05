@@ -1,9 +1,8 @@
 use alloc::{string::String, vec::Vec};
 
-use kernel_graphics::{FrameBufferInfo, PixelFormat};
+use kernel_graphics::FrameBufferInfo;
 use log::info;
 
-use memory::phys::PhysAddr;
 use memory::virt::VirtAddr;
 
 use self::{tag::Tag, tag_iterator::TagIterator};

@@ -1,13 +1,11 @@
-mod acpi_handler;
-mod ap_startup;
+pub mod acpi_handler;
+pub mod ap_startup;
 
 use acpi::{platform::ProcessorState, AcpiTables};
 
 use crate::multiboot2::{RSDPDescriptor, RSDPDescriptorV1, RSDPDescriptorV2};
 
 use acpi_handler::IdentityMapAcpiHandler;
-
-pub use ap_startup::*;
 
 pub fn number_of_cores(acpi_tables: &AcpiTables<IdentityMapAcpiHandler>) -> usize {
     acpi_tables

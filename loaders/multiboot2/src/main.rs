@@ -18,7 +18,7 @@ use log::info;
 use memory::virt::VirtAddr;
 use multiboot2::Multiboot2Info;
 
-use crate::acpi::{make_jump_to_kernel, KERNEL_ENTRY};
+use crate::acpi::ap_startup::{make_jump_to_kernel, KERNEL_ENTRY};
 
 mod acpi;
 mod arch;
@@ -119,7 +119,7 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
     }
 
     // Startup the Application Processors
-    acpi::startup_aps(&acpi_tables, &kernel_image);
+    acpi::ap_startup::startup_all_application_processors(&acpi_tables, &kernel_image);
 
     // Parse elf structure and load the kernel into memory
     kernel_image.load_kernel().expect("failed to load kernel");

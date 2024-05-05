@@ -36,7 +36,7 @@ pub extern "C" fn kernel_main(boot_info: &BootInfoHeader, proc_id: usize) -> ! {
 
     arch::cpu::init(proc_id);
 
-    ONCE.call_once(|| unsafe {
+    ONCE.call_once(|| {
         info!("FrameBuffer: {:?}", &boot_info.frame_buffer_info);
     });
 

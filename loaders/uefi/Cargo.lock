@@ -79,7 +79,7 @@ name = "initrd"
 version = "0.1.0"
 dependencies = [
  "memory",
- "tar-no-std 0.3.1",
+ "tar-no-std",
 ]
 
 [[package]]
@@ -204,6 +204,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
 
 [[package]]
+name = "serial"
+version = "0.1.0"
+dependencies = [
+ "spin",
+ "x86",
+]
+
+[[package]]
 name = "spin"
 version = "0.9.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -232,17 +240,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-ident",
-]
-
-[[package]]
-name = "tar-no-std"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d87688750eada7aef6d4a0b82979148980c67aca111f62f4bef82827276f3fc5"
-dependencies = [
- "arrayvec",
- "bitflags 2.5.0",
- "log",
 ]
 
 [[package]]
@@ -295,8 +292,8 @@ dependencies = [
  "linked_list_allocator",
  "log",
  "memory",
+ "serial",
  "spin",
- "tar-no-std 0.2.0",
  "uefi",
  "x86",
  "zeroize",

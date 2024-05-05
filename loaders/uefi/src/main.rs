@@ -38,9 +38,7 @@ fn main(handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
 
     system_table.boot_services().stall(1_000_000);
 
-    info!("exiting boot services now");
-
-    panic_handler::on_exit_boot_services();
+    info!("exiting boot services");
 
     // Call exit_boot_services to transition over to full control over the system
     let (_runtime_table, _mmap) = system_table.exit_boot_services(MemoryType::LOADER_DATA);
@@ -54,9 +52,6 @@ fn init(handle: Handle, system_table: &SystemTable<Boot>) {
 
     // Initialize logger
     boot_logger::init();
-
-    // Initialize the panic handler so it has access to stdout
-    panic_handler::init(system_table);
 
     // Initialize the heap
     heap::init();

@@ -16,7 +16,7 @@ pub fn prepare(boot_services: &BootServices) {
     // this function should only be called once and never concurrently
     assert!(PAGE_TABLES_MEMORY.get().is_none());
 
-    // We need to allocate memory for 6 page tables:
+    // We need to allocate memory for six page-tables:
     // The PLM4T, one PDPT and 4 PD's
     let num_frames = 6;
 
@@ -33,7 +33,7 @@ pub fn prepare(boot_services: &BootServices) {
 
     let (plm4t, pdpt, pds) = unsafe { get_tables_mut(start_addr) };
 
-    // clear out the memroy to all zero's
+    // clear out the memory to all zero's
     plm4t.zeroize();
     pdpt.zeroize();
     pds[0].zeroize();

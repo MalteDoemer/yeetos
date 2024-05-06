@@ -37,7 +37,7 @@ pub fn init(boot_services: &BootServices) {
     }
 }
 
-/// Time from arbitrary epoch in nano seconds
+/// Time from arbitrary epoch in nanoseconds
 #[inline(always)]
 pub fn now_ns() -> u64 {
     let cycle = rdtsc();

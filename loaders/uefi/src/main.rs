@@ -3,6 +3,7 @@
 #![allow(dead_code)]
 // needed for the heap allocator
 #![feature(alloc_error_handler)]
+#![feature(allocator_api)]
 
 mod acpi;
 mod arch;
@@ -11,7 +12,6 @@ mod bootfs;
 mod heap;
 mod paging;
 mod panic_handler;
-mod time;
 
 extern crate alloc;
 
@@ -31,23 +31,7 @@ pub const MEMORY_TYPE_KERNEL_IMAGE: u32 = 0x80000006;
 pub const MEMORY_TYPE_KERNEL_PAGE_TABLES: u32 = 0x80000007;
 
 #[entry]
-fn main(handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
-    // Perform initialization with boot_services still available
-    init(handle, &mut system_table);
-
-    system_table.boot_services().stall(1_000_000);
-
-    info!("exiting boot services");
-
-    // Call exit_boot_services to transition over to full control over the system
-    let (_runtime_table, _mmap) = system_table.exit_boot_services(MemoryType::LOADER_DATA);
-
-    panic!("finished with main()");
-}
-
-fn init(handle: Handle, system_table: &SystemTable<Boot>) {
-    let boot_services = system_table.boot_services();
-
+fn main(handle: Handle, system_table: SystemTable<Boot>) -> Status {
     // Initialize logger
     boot_logger::init();
 
@@ -55,7 +39,7 @@ fn init(handle: Handle, system_table: &SystemTable<Boot>) {
     heap::init();
 
     // Initialize time helper functions
-    time::init(boot_services);
+    arch::time::init(system_table.boot_services());
 
     // Parse the ACPI tables
     let acpi_tables = acpi::get_acpi_tables(&system_table);
@@ -64,18 +48,15 @@ fn init(handle: Handle, system_table: &SystemTable<Boot>) {
     info!("there are {} cores reported", num_cores);
 
     // Open a handle to the EFI System Partition
-    let mut bootfs = BootFs::new(handle, boot_services);
+    let mut bootfs =
+        BootFs::new(handle, system_table.boot_services()).expect("unable to open boot file system");
 
     // Find and open the initrd file
-    let mut initrd_file = bootfs
-        .open_file_readonly(cstr16!("\\yeetos\\initrd"))
-        .expect("unable to open \\yeetos\\initrd")
-        .into_regular_file()
-        .expect("\\yeetos\\initrd is not a file");
+    let (mut initrd_file, initrd_pages) = bootfs.open_initrd().expect("unable to open initrd file");
 
     // Allocate memory for the boot info and INITRD
     let (_boot_info_header, initrd_buffer) =
-        boot_info::allocate_boot_info(boot_services, bootfs.file_size_in_pages(&mut initrd_file));
+        boot_info::allocate_boot_info(system_table.boot_services(), initrd_pages);
 
     // Load the INITRD into memory
     bootfs
@@ -110,7 +91,7 @@ fn init(handle: Handle, system_table: &SystemTable<Boot>) {
 
     // Allocate the physical pages for the kernel image
     let kernel_base = allocate_kernel_pages(
-        boot_services,
+        system_table.boot_services(),
         &parsed_kernel_image,
         kernel_cmdline.use_reloc(),
     )
@@ -126,13 +107,26 @@ fn init(handle: Handle, system_table: &SystemTable<Boot>) {
 
     let kernel_image_info = kernel_image.kernel_image_info();
 
-    paging::prepare(boot_services);
+    paging::prepare(system_table.boot_services());
 
     info!(
         "kernel image: {:p} - {:p}",
         kernel_image_info.start(),
         kernel_image_info.end()
     );
+
+    info!("exiting boot services");
+
+    // We cannot use the bootfs after exiting boot services
+    drop(bootfs);
+
+    // Call exit_boot_services to transition over to full control over the system
+    let (system_table, _mmap) = system_table.exit_boot_services(MemoryType::LOADER_DATA);
+
+    // Start all application processors
+    acpi::ap_startup::startup_all_application_processors(&acpi_tables, &kernel_image);
+
+    panic!("finished with main()");
 }
 
 fn dump_memory_map(boot_services: &BootServices) {

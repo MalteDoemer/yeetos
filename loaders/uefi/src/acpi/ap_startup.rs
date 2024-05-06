@@ -1,18 +1,17 @@
+use alloc::alloc::Global;
 use core::sync::atomic::{AtomicUsize, Ordering};
-
-use acpi::{platform::ProcessorState, AcpiTables};
 use kernel_image::KernelImage;
-use log::info;
-use memory::{
-    virt::{Page, VirtAddr, VirtualRange},
-    PAGE_SHIFT, PAGE_SIZE,
-};
+use memory::virt::VirtAddr;
 use spin::Once;
-use uefi::table::boot::{AllocateType, BootServices, MemoryType};
+use x86::apic::{xapic::XAPIC, ApicControl, ApicId};
 
-use super::acpi_handler::IdentityMapAcpiHandler;
+use acpi::{
+    platform::{interrupt::Apic, ProcessorState},
+    AcpiTables,
+};
 
-pub static AP_COUNT: AtomicUsize = AtomicUsize::new(0);
+use crate::acpi::acpi_handler::IdentityMapAcpiHandler;
+use crate::arch::time::{busy_sleep_ms, busy_sleep_us};
 
 pub static KERNEL_ENTRY: Once<VirtAddr> = Once::new();
 
@@ -22,12 +21,7 @@ static KERNEL_STACKS_VADDR: AtomicUsize = AtomicUsize::new(0);
 #[no_mangle]
 static KERNEL_STACK_SIZE: AtomicUsize = AtomicUsize::new(0);
 
-extern "C" {
-    fn startup_ap(local_apic_addr: usize, apic_id: usize, vector: usize);
-}
-
-pub fn startup_aps(
-    boot_services: &BootServices,
+pub fn startup_all_application_processors(
     acpi_tables: &AcpiTables<IdentityMapAcpiHandler>,
     kernel_image: &KernelImage,
 ) {
@@ -37,6 +31,9 @@ pub fn startup_aps(
 
     let num_cores = kernel_image.num_cores();
 
+    if num_cores >= 256 {
+        panic!("number of cores may not exceed 255");
+    }
     let platform_info = acpi_tables
         .platform_info()
         .expect("unable to get acpi platform info");
@@ -45,86 +42,79 @@ pub fn startup_aps(
         .processor_info
         .expect("unable to get acpi processor info");
 
-    let im = platform_info.interrupt_model;
-
-    let apic = match im {
+    let apic_info = match platform_info.interrupt_model {
         acpi::InterruptModel::Apic(apic) => apic,
         _ => panic!("acpi interrupt model unknown"),
     };
 
-    let local_apic_addr: usize = apic
-        .local_apic_address
-        .try_into()
-        .expect("local apic address to large");
+    let mut local_apic = get_local_apic(apic_info);
 
-    let ap_tramp = init_ap_trampoline(boot_services);
-
-    let vector = ap_tramp.to_inner() >> PAGE_SHIFT;
+    install_ap_trampoline();
 
     processor_info
         .application_processors
         .iter()
-        .filter(|ap| ap.state == ProcessorState::WaitingForSipi)
+        .filter(|&ap| ap.state == ProcessorState::WaitingForSipi)
         .map(|ap| ap.local_apic_id.try_into().unwrap())
-        .for_each(|apic_id: usize| unsafe {
-            // We only set up `num_cores` of kernel stacks and we use
-            // the apic_id in boot.s to load a stack pointer.
-            // Thus if the apic_id is bigger than num_cores (for whatever reason)
-            // we will get memory corruption.
+        .for_each(|apic_id: usize| {
+            // We only set up `num_cores` of kernel stacks, and we use the apic_id in boot.s to
+            // load a stack pointer. Thus, if the apic_id is bigger than num_cores
+            // (for whatever reason) we will get memory corruption.
             assert!(apic_id < num_cores);
 
-            // Safety: this function is implemented in boot.s and assumed to be safe.
-            // startup_ap(addr, apic_id);
-            info!("starting ap #{} now ...", apic_id);
-            startup_ap(local_apic_addr, apic_id, vector);
+            startup_ap(&mut local_apic, ApicId::XApic(apic_id as u8));
         });
 }
 
-fn init_ap_trampoline(boot_services: &BootServices) -> VirtAddr {
-    let ap_dest = allocate_ap_trampoline(boot_services);
-
-    let ap_source = ap_trampoline_range();
-
-    // now copy the memory from `ap_source` to `ap_dest`
-    unsafe {
-        core::ptr::copy(
-            ap_source.start_addr().as_ptr::<u8>(),
-            ap_dest.as_ptr_mut::<u8>(),
-            ap_source.num_pages() * PAGE_SIZE,
-        );
-    }
-
-    ap_dest
-}
-
-fn ap_trampoline_range() -> VirtualRange {
+fn install_ap_trampoline() {
     extern "C" {
-        fn ap_trampoline();
-        fn ap_trampoline_end();
+        pub fn ap_trampoline();
+        pub fn ap_trampoline_end();
+        pub fn ap_trampoline_dest();
     }
 
-    let ap_trampoline_start_addr = ap_trampoline as usize;
+    let ap_trampoline_addr = ap_trampoline as usize;
     let ap_trampoline_end_addr = ap_trampoline_end as usize;
+    let ap_trampoline_dest_addr = 0x8000;
 
-    let start = Page::new(ap_trampoline_start_addr.into());
-    let end = Page::new(ap_trampoline_end_addr.into());
+    let src = ap_trampoline_addr as *const u8;
+    let dst = ap_trampoline_dest_addr as *mut u8;
+    let size = ap_trampoline_end_addr - ap_trampoline_addr;
 
-    VirtualRange::new_diff(start, end)
+    unsafe {
+        core::ptr::copy(src, dst, size);
+    }
 }
 
-fn allocate_ap_trampoline(boot_services: &BootServices) -> VirtAddr {
-    // Since the cpu is in real mode when executing the ap trampoline
-    // and starts at address XX00:0000 where XX is the vector specified in the STARTUP IPI
-    // we have to find free memory below 0xFF000 which is the highest addressable address
-    let max_addr = 0xFF000;
+fn get_local_apic(apic_info: Apic<Global>) -> XAPIC {
+    let base_addr: usize = apic_info
+        .local_apic_address
+        .try_into()
+        .expect("local apic address to large");
 
-    let num_pages = ap_trampoline_range().num_pages();
+    let ptr = base_addr as *mut u32;
+    // Note: I'm not 100% sure on the size of this slice, but since it is never really used as
+    // one it shouldn't really matter
+    let size = 0x400;
 
-    let pages = boot_services.allocate_pages(
-        AllocateType::MaxAddress(max_addr),
-        MemoryType::LOADER_DATA,
-        num_pages,
-    );
+    // Safety:
+    // The memory for the local apic should be safely accessible.
+    let slice = unsafe { core::slice::from_raw_parts_mut(ptr, size) };
 
-    VirtAddr::new(pages.expect("unable to allocate pages for ap trampoline") as usize)
+    XAPIC::new(slice)
+}
+
+fn startup_ap<T: ApicControl>(local_apic: &mut T, apic_id: ApicId) {
+    // This code follows the guidelines on https://wiki.osdev.org/Symmetric_Multiprocessing
+    unsafe {
+        local_apic.ipi_init(apic_id);
+
+        local_apic.ipi_init_deassert();
+        busy_sleep_ms(10);
+
+        for _ in 0..2 {
+            local_apic.ipi_startup(apic_id, 0x08);
+            busy_sleep_us(200);
+        }
+    }
 }

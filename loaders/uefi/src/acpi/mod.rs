@@ -7,10 +7,8 @@ use uefi::table::{
     Boot, SystemTable,
 };
 
-mod acpi_handler;
-mod ap_startup;
-
-pub use ap_startup::startup_aps;
+pub mod acpi_handler;
+pub mod ap_startup;
 
 pub fn number_of_cores(acpi_tables: &AcpiTables<IdentityMapAcpiHandler>) -> usize {
     acpi_tables

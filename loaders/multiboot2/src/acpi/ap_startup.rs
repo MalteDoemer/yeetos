@@ -1,4 +1,5 @@
 use alloc::alloc::Global;
+use core::arch::asm;
 use core::sync::atomic::{AtomicUsize, Ordering};
 
 use acpi::{platform::interrupt::Apic, platform::ProcessorState, AcpiTables};
@@ -28,7 +29,6 @@ static KERNEL_STACKS_VADDR: AtomicUsize = AtomicUsize::new(0);
 static KERNEL_STACK_SIZE: AtomicUsize = AtomicUsize::new(0);
 
 extern "C" {
-
     fn jmp_kernel_entry(
         boot_info_ptr: usize,
         processor_id: usize,

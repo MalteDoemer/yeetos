@@ -3,8 +3,8 @@ OUT_DIR=$(TOP_DIR)out
 
 # configuration
 
-ARCH=i686
-# ARCH=x86_64
+# ARCH=i686
+ARCH=x86_64
 CONFIG=debug
 LOADER=multiboot2
 
@@ -12,7 +12,7 @@ IMAGE_SIZE=64M
 
 # qemu options
 MEMORY=4G
-CORES=300
+CORES=8
 
 # end configuration
 
@@ -127,5 +127,5 @@ qemu-debug: all
 
 .PHONY: all qemu qemu-no-kvm qemu-debug clean clean-all dump-kernel disassemble-kernel dump-multiboot2 disassemble-multiboot2 dump-uefi disassemble-uefi
 
-# empty targe to force rebuild
+# empty target to force rebuild
 FORCE:

@@ -9,6 +9,7 @@ edition = "2021"
 overflow-checks = true
 
 [profile.release]
+opt-level = 3
 overflow-checks = true
 
 [dependencies]

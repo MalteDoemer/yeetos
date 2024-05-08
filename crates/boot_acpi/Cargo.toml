@@ -1,0 +1,15 @@
+[package]
+name = "boot_acpi"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+acpi = "5.0.0"
+x86 = "0.52.0"
+
+
+memory = { path = "../memory" }
+kernel_image = { path = "../kernel_image" }
+log = "0.4.21"

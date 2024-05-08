@@ -5,6 +5,7 @@
 #![feature(alloc_error_handler)]
 #![feature(allocator_api)]
 
+// mod acpi_old;
 mod acpi;
 mod arch;
 mod boot_info;
@@ -43,7 +44,8 @@ fn main(handle: Handle, system_table: SystemTable<Boot>) -> Status {
 
     // Parse the ACPI tables
     let acpi_tables = acpi::get_acpi_tables(&system_table);
-    let num_cores = acpi::number_of_cores(&acpi_tables);
+    let num_cores =
+        boot_acpi::number_of_cores(&acpi_tables).expect("acpi processor info not available");
 
     info!("there are {} cores reported", num_cores);
 
@@ -124,7 +126,7 @@ fn main(handle: Handle, system_table: SystemTable<Boot>) -> Status {
     let (system_table, _mmap) = system_table.exit_boot_services(MemoryType::LOADER_DATA);
 
     // Start all application processors
-    acpi::ap_startup::startup_all_application_processors(&acpi_tables, &kernel_image);
+    acpi::startup_all_application_processors(&acpi_tables, &kernel_image);
 
     panic!("finished with main()");
 }

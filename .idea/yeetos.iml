@@ -15,6 +15,7 @@
       <sourceFolder url="file://$MODULE_DIR$/loaders/uefi/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/crates/initrd/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/crates/serial/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/boot_acpi/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/crates/boot_info/target" />
       <excludeFolder url="file://$MODULE_DIR$/crates/boot_logger/target" />
       <excludeFolder url="file://$MODULE_DIR$/crates/kernel_cmdline/target" />
@@ -28,6 +29,7 @@
       <excludeFolder url="file://$MODULE_DIR$/loaders/uefi/target" />
       <excludeFolder url="file://$MODULE_DIR$/crates/initrd/target" />
       <excludeFolder url="file://$MODULE_DIR$/crates/serial/target" />
+      <excludeFolder url="file://$MODULE_DIR$/crates/boot_acpi/target" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />

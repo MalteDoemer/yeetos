@@ -84,11 +84,6 @@ prot_mode:
      *  registers right here.                                                   *
      * ------------------------------------------------------------------------ */
 
-    //movl NUM_CORES, %ebp
-    //movl KERNEL_STACKS_VADDR, %edi
-    //movl KERNEL_STACK_SIZE, %esi
-
-
     /* ------------------------------------------------------------------------ *
      *  Now that we are in protected mode we need to enter long mode. This      *
      *  requires us to enable paging setting the LM bit in the EFER MSR and     *
@@ -164,6 +159,7 @@ long_mode_ap:
 
     // read IA32_X2APIC_APICID msr which loads the apic id into %eax
     movl $0x802, %ecx
+    rdmsr
     movl %eax, %ebx
 
     jmp calc_stack

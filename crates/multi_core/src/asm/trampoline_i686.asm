@@ -101,6 +101,7 @@ reload_cs_ap:
 
     // read IA32_X2APIC_APICID msr which loads the apic id into %eax
     movl $0x802, %ecx
+    rdmsr
     movl %eax, %ebx
 
     jmp calc_stack

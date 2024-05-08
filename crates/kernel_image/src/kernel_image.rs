@@ -217,10 +217,7 @@ impl<'a> ParsedKernelImage<'a> {
     }
 
     pub fn verify(&self) -> Result<(), KernelImageError> {
-        // we assume there are <= 256 cores
-        // Note: this could be dropped in the future
-
-        if self.num_cores == 0 || self.num_cores > 256 {
+        if self.num_cores == 0 {
             return Err(KernelImageError::InvalidNumCores);
         }
 

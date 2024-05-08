@@ -3,8 +3,8 @@ OUT_DIR=$(TOP_DIR)out
 
 # configuration
 
-# ARCH=i686
-ARCH=x86_64
+ARCH=i686
+# ARCH=x86_64
 CONFIG=debug
 LOADER=multiboot2
 
@@ -12,7 +12,7 @@ IMAGE_SIZE=64M
 
 # qemu options
 MEMORY=4G
-CORES=8
+CORES=300
 
 # end configuration
 
@@ -35,7 +35,7 @@ ISO=$(OUT_DIR)/yeetos.iso
 UEFI_IMG=$(OUT_DIR)/uefi.img
 KERNEL_FONT_OUT:=$(OUT_DIR)/eurlatgr.psfu
 
-QEMU_ARGS:= -machine q35 -smp cpus=$(CORES) -m $(MEMORY)
+QEMU_ARGS:= -smp cpus=$(CORES) -m $(MEMORY)
 
 ifeq ($(CONFIG), debug)
 PROFILE := dev
@@ -58,7 +58,7 @@ DEPS+= $(UEFI_IMG)
 QEMU_ARGS+= -bios $(UEFI_FIRMWARE) -drive format=raw,file=$(UEFI_IMG),if=ide -serial stdio 
 else ifeq ($(LOADER), multiboot2)
 DEPS+= $(ISO)
-QEMU_ARGS+= -cdrom $(ISO) -serial stdio 
+QEMU_ARGS+= -machine q35 -cdrom $(ISO) -serial stdio
 endif
 
 all: $(DEPS)

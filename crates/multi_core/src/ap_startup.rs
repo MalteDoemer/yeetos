@@ -20,7 +20,6 @@ static PAGE_TABLE_ADDRESS: AtomicU32 = AtomicU32::new(0);
 #[derive(Debug, Copy, Clone)]
 pub enum ApStartupError {
     BadPageTableAddress,
-    NumCoresTooBig,
     AcpiPlatformInfoNotPresent,
     AcpiProcessorInfoNotAvailable,
     ApicNotPresent,
@@ -32,7 +31,7 @@ pub fn startup_all_application_processors<H: AcpiHandler, SleepMicroSecondsFn: F
     page_table_address: PhysAddr,
     sleep_us: SleepMicroSecondsFn,
 ) -> Result<(), ApStartupError> {
-    let num_cores = kernel_image.num_cores();
+    let num_cores = kernel_image.num_cores().try_into().unwrap();
     let stack_size = kernel_image.kernel_stack_size();
     let stacks_addr = kernel_image
         .kernel_image_info()
@@ -45,15 +44,11 @@ pub fn startup_all_application_processors<H: AcpiHandler, SleepMicroSecondsFn: F
         .try_into()
         .map_err(|_| ApStartupError::BadPageTableAddress)?;
 
-    if num_cores >= 256 {
-        return Err(ApStartupError::NumCoresTooBig);
-    }
-
     // Store some global information that the AP's can later access once they are started
     // Note: check that relaxed is okay here??
     KERNEL_STACKS_VADDR.store(stacks_addr, Ordering::Relaxed);
     KERNEL_STACK_SIZE.store(stack_size, Ordering::Relaxed);
-    NUM_CORES.store(num_cores as u32, Ordering::Relaxed);
+    NUM_CORES.store(num_cores, Ordering::Relaxed);
     PAGE_TABLE_ADDRESS.store(page_table_address, Ordering::Relaxed);
 
     let processor_info = acpi_tables

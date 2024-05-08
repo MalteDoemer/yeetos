@@ -16,8 +16,10 @@ mod panic_handler;
 
 extern crate alloc;
 
+use alloc::format;
 use alloc::vec::Vec;
 use bootfs::BootFs;
+use core::fmt::Write;
 use initrd::Initrd;
 use kernel_image::ParsedKernelImage;
 use log::info;
@@ -131,8 +133,10 @@ fn main(handle: Handle, system_table: SystemTable<Boot>) -> Status {
     panic!("finished with main()");
 }
 
-fn dump_memory_map(boot_services: &BootServices) {
-    let mmap_size = boot_services.memory_map_size();
+fn dump_memory_map(system_table: &mut SystemTable<Boot>) {
+    // let boot_services = system_table.boot_services();
+
+    let mmap_size = system_table.boot_services().memory_map_size();
 
     let buffer_size = mmap_size.map_size + mmap_size.entry_size * 8;
 
@@ -141,7 +145,8 @@ fn dump_memory_map(boot_services: &BootServices) {
 
     let buffer = vec.as_mut_slice();
 
-    let mut mmap = boot_services
+    let mut mmap = system_table
+        .boot_services()
         .memory_map(buffer)
         .expect("unable to get uefi memory map");
 
@@ -153,15 +158,20 @@ fn dump_memory_map(boot_services: &BootServices) {
         let start = PhysAddr::new(entry.phys_start);
         // let end = start + FRAME_SIZE * entry.page_count;
 
-        info!(
-            "start={:p} pages={:#x} type={:?}",
+        let string = format!(
+            "start={:p} pages={:#x} type={:?}\n",
             start, entry.page_count, entry.ty
         );
+
+        let _ = system_table.stdout().write_str(&string);
+
         i += 1;
 
         if i % 8 == 0 {
-            info!("---------------------------------------------");
-            boot_services.stall(5_000_000);
+            let _ = system_table
+                .stdout()
+                .write_str("---------------------------------------------");
+            system_table.boot_services().stall(5_000_000);
         }
     }
 }

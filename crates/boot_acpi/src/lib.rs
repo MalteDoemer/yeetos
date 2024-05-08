@@ -13,6 +13,7 @@ use x86::{
 };
 
 pub mod ap_startup;
+mod cpuid_hack;
 pub mod handler;
 
 #[cfg(target_arch = "x86_64")]
@@ -44,7 +45,7 @@ pub fn number_of_cores<H: AcpiHandler>(acpi_tables: &AcpiTables<H>) -> Option<us
 }
 
 pub fn get_local_apic(use_higher_half: bool) -> Option<ApicMode> {
-    let cpuid = CpuId::new();
+    let cpuid = CpuId::with_cpuid_fn(cpuid_hack::native_cpuid::cpuid_count);
 
     let feature_info = cpuid.get_feature_info()?;
 
@@ -61,7 +62,9 @@ pub fn get_local_apic(use_higher_half: bool) -> Option<ApicMode> {
         Some(ApicMode::X2Apic(x2apic))
     } else if has_apic {
         let base = unsafe { rdmsr(IA32_APIC_BASE) };
-        let phys_addr = PhysAddr::new(base & 0xfffff000);
+
+        let inner = (base & 0xfffff000).try_into().unwrap();
+        let phys_addr = PhysAddr::new(inner);
 
         let virt_addr = if use_higher_half {
             phys_addr.to_higher_half_checked()?

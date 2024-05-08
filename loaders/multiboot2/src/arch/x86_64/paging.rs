@@ -43,7 +43,7 @@ pub fn get_page_map_level_four() -> PageMapLevelFourGuard<'static> {
 }
 
 pub fn init_ap() {
-    // Note: nothing to do here, all initialization is done in ap_startup.s
+    // Note: nothing to do here, all initialization is done during ap startup
 }
 
 /// Enable the higher half mapping.

@@ -250,9 +250,6 @@ cpuid_error_msg:
 pse_error_msg:
     .asciz "boot failed: PSE (page size extension) not available!"
 
-.global gdt32
-.global gdt32_ptr
-
 .align 8
 gdt32:
     // null descriptor

@@ -1,8 +1,8 @@
 use acpi::{AcpiHandler, PhysicalMapping};
 use core::ptr::NonNull;
 use memory::phys::{Frame, PhysAddr, PhysicalRange};
-use memory::virt::{Page, VirtualRange};
-use memory::IDENTITY_MAP_SIZE;
+use memory::virt::VirtAddr;
+use memory::{FRAME_SIZE, IDENTITY_MAP_SIZE};
 
 #[derive(Debug, Copy, Clone)]
 pub enum IdentityMapMode {
@@ -36,36 +36,28 @@ impl IdentityMappedAcpiHandler {
         Self::new(IdentityMapMode::HigherHalf)
     }
 
-    fn translate(&self, range_to_map: PhysicalRange) -> Option<VirtualRange> {
+    fn translate(&self, addr: PhysAddr, size: memory::phys::Inner) -> Option<VirtAddr> {
         match self.mode {
-            IdentityMapMode::All => self.identity(range_to_map),
+            IdentityMapMode::All => addr.to_virt_checked(),
             IdentityMapMode::Range(range) => {
+                let range_to_map = PhysicalRange::new(
+                    Frame::new(addr),
+                    size.checked_next_multiple_of(FRAME_SIZE)? / FRAME_SIZE,
+                );
+
                 if range.contains_range(range_to_map) {
-                    self.identity(range_to_map)
+                    addr.to_virt_checked()
                 } else {
                     None
                 }
             }
             IdentityMapMode::HigherHalf => {
-                let start_addr = range_to_map.start_addr().to_higher_half_checked()?;
-                let end_addr = range_to_map.checked_end_addr()?.to_higher_half_checked()?;
-
-                Some(VirtualRange::new_diff(
-                    Page::new(start_addr),
-                    Page::new(end_addr),
-                ))
+                let start_addr = addr.to_higher_half_checked()?;
+                let _ =
+                    PhysAddr::new(addr.to_inner().checked_add(size)?).to_higher_half_checked()?;
+                Some(start_addr)
             }
         }
-    }
-
-    fn identity(&self, range: PhysicalRange) -> Option<VirtualRange> {
-        let start_addr = range.start_addr().to_virt_checked()?;
-        let end_addr = range.checked_end_addr()?.to_virt_checked()?;
-
-        Some(VirtualRange::new_diff(
-            Page::new(start_addr),
-            Page::new(end_addr),
-        ))
     }
 }
 
@@ -76,20 +68,20 @@ impl AcpiHandler for IdentityMappedAcpiHandler {
         size: usize,
     ) -> PhysicalMapping<Self, T> {
         let phys_start_addr = PhysAddr::new(physical_address.try_into().unwrap());
-        let phys_end_addr = PhysAddr::new((physical_address + size).try_into().unwrap());
+        //let phys_end_addr = PhysAddr::new((physical_address + size).try_into().unwrap());
 
-        let range = PhysicalRange::new_diff(Frame::new(phys_start_addr), Frame::new(phys_end_addr));
+        // let range = PhysicalRange::new_diff(Frame::new(phys_start_addr), Frame::new(phys_end_addr));
 
-        let translated = match self.translate(range) {
+        let translated = match self.translate(phys_start_addr, size.try_into().unwrap()) {
             None => panic!(
-                "IdentityMappedAcpiHandler: unable to map physical region: {:?}",
-                range
+                "IdentityMappedAcpiHandler: unable to map physical region: start={:p}, size{:#x}",
+                phys_start_addr, size,
             ),
-            Some(range) => range,
+            Some(addr) => addr,
         };
 
         let physical_start = physical_address;
-        let virtual_start = NonNull::new(translated.start_addr().as_ptr_mut::<T>())
+        let virtual_start = NonNull::new(translated.as_ptr_mut::<T>())
             .expect("IdentityMappedAcpiHandler: tried to map address zero!");
 
         let region_length = size;

@@ -2,7 +2,6 @@ use crate::ApicMode;
 use acpi::{platform::ProcessorState, AcpiHandler, AcpiTables};
 use core::sync::atomic::{AtomicU32, AtomicUsize, Ordering};
 use kernel_image::KernelImage;
-use log::info;
 use memory::phys::PhysAddr;
 use x86::apic::{ApicControl, ApicId};
 
@@ -102,7 +101,7 @@ fn install_ap_trampoline() {
 
     let ap_trampoline_addr = ap_trampoline as usize;
     let ap_trampoline_end_addr = ap_trampoline_end as usize;
-    let ap_trampoline_dest = 0x8000;
+    let ap_trampoline_dest = 0x8000usize;
 
     let src = ap_trampoline_addr as *const u8;
     let dst = ap_trampoline_dest as *mut u8;

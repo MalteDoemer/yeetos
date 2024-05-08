@@ -6,7 +6,7 @@ OUT_DIR=$(TOP_DIR)out
 # ARCH=i686
 ARCH=x86_64
 CONFIG=debug
-LOADER=uefi
+LOADER=multiboot2
 
 IMAGE_SIZE=64M
 
@@ -35,7 +35,7 @@ ISO=$(OUT_DIR)/yeetos.iso
 UEFI_IMG=$(OUT_DIR)/uefi.img
 KERNEL_FONT_OUT:=$(OUT_DIR)/eurlatgr.psfu
 
-QEMU_ARGS:= -smp cpus=$(CORES) -m $(MEMORY)
+QEMU_ARGS:= -machine q35 -smp cpus=$(CORES) -m $(MEMORY)
 
 ifeq ($(CONFIG), debug)
 PROFILE := dev

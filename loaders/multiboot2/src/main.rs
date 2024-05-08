@@ -18,7 +18,7 @@ use log::info;
 use memory::virt::VirtAddr;
 use multiboot2::Multiboot2Info;
 
-use crate::acpi::ap_startup::{make_jump_to_kernel, KERNEL_ENTRY};
+use crate::acpi::{make_jump_to_kernel, KernelEntryInfo, KERNEL_ENTRY};
 
 mod acpi;
 mod arch;
@@ -67,7 +67,8 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
             .expect("rsdp descriptor not present"),
     );
 
-    let num_cores = acpi::number_of_cores(&acpi_tables);
+    let num_cores =
+        boot_acpi::number_of_cores(&acpi_tables).expect("acpi processor info not available");
 
     let cmdline_data = initrd
         .file_by_name("cmdline")
@@ -119,7 +120,7 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
     }
 
     // Startup the Application Processors
-    acpi::ap_startup::startup_all_application_processors(&acpi_tables, &kernel_image);
+    acpi::startup_all_application_processors(&acpi_tables, &kernel_image);
 
     // Parse elf structure and load the kernel into memory
     kernel_image.load_kernel().expect("failed to load kernel");
@@ -133,16 +134,25 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
     // on x86_64 paging is already enabled in boot.s
     arch::paging::init();
 
+    // Initialize the boot_info header
+    boot_info::init_boot_info(&mboot_info, &memory_map, &initrd, &kernel_image_info);
+
     // Get the entry point address from the kernel image and translate it into
     // a higher-half address.
     let entry_point = kernel_image.kernel_entry_point().to_higher_half();
 
-    // Initialize the boot_info header
-    boot_info::init_boot_info(&mboot_info, &memory_map, &initrd, &kernel_image_info);
+    // Get the start address of the stack area and translate it into a higher-half address
+    let stacks_start = kernel_image_info.stack.start_addr().to_higher_half();
+
+    let entry = KernelEntryInfo {
+        entry_point,
+        stacks_start,
+        stack_size: kernel_image.kernel_stack_size(),
+    };
 
     // This releases all started AP's to enter the kernel
-    KERNEL_ENTRY.call_once(|| entry_point);
+    KERNEL_ENTRY.call_once(|| entry);
 
     // Note: BSP has id of 0
-    make_jump_to_kernel(0, entry_point);
+    make_jump_to_kernel(0, entry);
 }

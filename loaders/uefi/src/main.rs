@@ -45,7 +45,7 @@ fn main(handle: Handle, system_table: SystemTable<Boot>) -> Status {
     // Parse the ACPI tables
     let acpi_tables = acpi::get_acpi_tables(&system_table);
     let num_cores =
-        boot_acpi::number_of_cores(&acpi_tables).expect("acpi processor info not available");
+        multi_core::number_of_cores(&acpi_tables).expect("acpi processor info not available");
 
     info!("there are {} cores reported", num_cores);
 

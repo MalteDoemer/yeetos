@@ -68,7 +68,7 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
     );
 
     let num_cores =
-        boot_acpi::number_of_cores(&acpi_tables).expect("acpi processor info not available");
+        multi_core::number_of_cores(&acpi_tables).expect("acpi processor info not available");
 
     let cmdline_data = initrd
         .file_by_name("cmdline")

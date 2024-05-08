@@ -43,17 +43,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf4b9d6a944f767f8e5e0db018570623c85f3d925ac718db4e06d0187adb21c1"
 
 [[package]]
-name = "boot_acpi"
-version = "0.1.0"
-dependencies = [
- "acpi",
- "kernel_image",
- "log",
- "memory",
- "x86",
-]
-
-[[package]]
 name = "boot_info"
 version = "0.1.0"
 dependencies = [
@@ -147,11 +136,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "multi_core"
+version = "0.1.0"
+dependencies = [
+ "acpi",
+ "kernel_image",
+ "log",
+ "memory",
+ "x86",
+]
+
+[[package]]
 name = "multiboot2-loader"
 version = "0.1.0"
 dependencies = [
  "acpi",
- "boot_acpi",
  "boot_info",
  "boot_logger",
  "elf",
@@ -162,6 +161,7 @@ dependencies = [
  "linked_list_allocator",
  "log",
  "memory",
+ "multi_core",
  "serial",
  "spin",
  "x86",

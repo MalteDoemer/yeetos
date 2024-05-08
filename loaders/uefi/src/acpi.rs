@@ -1,6 +1,6 @@
 use crate::arch::time::busy_sleep_us;
 use acpi::AcpiTables;
-use boot_acpi::handler::{IdentityMapMode, IdentityMappedAcpiHandler};
+use multi_core::handler::{IdentityMapMode, IdentityMappedAcpiHandler};
 use kernel_image::KernelImage;
 use log::info;
 use memory::phys::PhysAddr;
@@ -19,7 +19,7 @@ pub fn startup_all_application_processors(
 
     info!("pml4t is at {:p}", pml4t_addr);
 
-    boot_acpi::ap_startup::startup_all_application_processors(
+    multi_core::ap_startup::startup_all_application_processors(
         acpi_tables,
         kernel_image,
         pml4t_addr,

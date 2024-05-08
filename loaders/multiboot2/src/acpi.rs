@@ -3,11 +3,11 @@ use crate::devices::tsc::busy_sleep_us;
 use crate::idt;
 use crate::multiboot2::{RSDPDescriptor, RSDPDescriptorV1, RSDPDescriptorV2};
 use acpi::AcpiTables;
-use boot_acpi::handler::IdentityMappedAcpiHandler;
 use kernel_image::KernelImage;
 use log::info;
 use memory::phys::PhysAddr;
 use memory::virt::VirtAddr;
+use multi_core::handler::IdentityMappedAcpiHandler;
 use spin::Once;
 
 #[derive(Copy, Clone)]
@@ -36,7 +36,7 @@ pub fn startup_all_application_processors(
     // Defined in boot.s
     let page_table_addr = PhysAddr::new(0x1000);
 
-    boot_acpi::ap_startup::startup_all_application_processors(
+    multi_core::ap_startup::startup_all_application_processors(
         acpi_tables,
         kernel_image,
         page_table_addr,

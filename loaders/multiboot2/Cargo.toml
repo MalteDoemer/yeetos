@@ -21,7 +21,7 @@ memory = { path = "../../crates/memory" }
 initrd = { path = "../../crates/initrd" }
 serial = { path = "../../crates/serial" }
 boot_info = { path = "../../crates/boot_info" }
-boot_acpi = { path = "../../crates/boot_acpi" }
+multi_core = { path = "../../crates/multi_core" }
 boot_logger = { path = "../../crates/boot_logger" }
 kernel_image = { path = "../../crates/kernel_image" }
 kernel_cmdline = { path = "../../crates/kernel_cmdline" }

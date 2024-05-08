@@ -18,12 +18,13 @@ use log::info;
 use memory::virt::VirtAddr;
 use multiboot2::Multiboot2Info;
 
-use crate::acpi::{make_jump_to_kernel, KernelEntryInfo, KERNEL_ENTRY};
+use crate::entry::{make_jump_to_kernel, KernelEntryInfo, KERNEL_ENTRY};
 
 mod acpi;
 mod arch;
 mod boot_info;
 mod devices;
+mod entry;
 mod heap;
 mod idt;
 mod mmap;
@@ -130,7 +131,7 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
     // Initialize paging and enable the higher half mapping.
     //
     // Note: after this access to some addresses is no longer possible
-    // This means functions such as startup_aps() and get_acpi_tables() must be called before
+    // This means functions such as startup_all_application_processors() and get_acpi_tables() must be called before
     //
     // Also: most of the initialization of the paging structs is done in boot.s
     // on x86_64 paging is already enabled in boot.s

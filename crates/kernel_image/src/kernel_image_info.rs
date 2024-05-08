@@ -1,4 +1,4 @@
-use memory::virt::{VirtAddr, VirtualRange};
+use memory::virt::{Page, VirtAddr, VirtualRange};
 
 #[derive(Debug)]
 pub struct KernelImageInfo {
@@ -37,4 +37,24 @@ impl KernelImageInfo {
     pub fn size_in_bytes(&self) -> usize {
         self.end() - self.start()
     }
+
+    pub fn to_higher_half(&self) -> Self {
+        KernelImageInfo {
+            stack: translate_range_to_higher_half(self.stack),
+            rodata: translate_optional_range_to_higher_half(self.rodata),
+            code: translate_range_to_higher_half(self.code),
+            relro: translate_optional_range_to_higher_half(self.relro),
+            data: translate_optional_range_to_higher_half(self.data),
+            heap: translate_range_to_higher_half(self.heap),
+        }
+    }
+}
+
+fn translate_range_to_higher_half(range: VirtualRange) -> VirtualRange {
+    let page = Page::new(range.start_addr().to_higher_half());
+    VirtualRange::new(page, range.num_pages())
+}
+
+fn translate_optional_range_to_higher_half(range: Option<VirtualRange>) -> Option<VirtualRange> {
+    range.map(|rng| translate_range_to_higher_half(rng))
 }

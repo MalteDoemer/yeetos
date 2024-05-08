@@ -298,6 +298,7 @@ dependencies = [
  "boot_logger",
  "initrd",
  "kernel_cmdline",
+ "kernel_graphics",
  "kernel_image",
  "linked_list_allocator",
  "log",

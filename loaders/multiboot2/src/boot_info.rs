@@ -32,9 +32,7 @@ pub fn init_boot_info<'a>(
     initrd: &Initrd<'a>,
     kernel_image_info: &KernelImageInfo,
 ) {
-    // Safety: this function is only called in the BSP
-    // and any further access only happens after this function finished.
-    let boot_info = unsafe { &mut *addr_of_mut!(BOOT_INFO_HEADER) };
+    let mut boot_info = BootInfoHeader::empty();
 
     let boot_info_start = get_boot_info_addr();
     let boot_info_end = initrd.end_addr().to_higher_half();
@@ -43,12 +41,12 @@ pub fn init_boot_info<'a>(
     boot_info.boot_info_size = boot_info_end - boot_info_start;
     boot_info.boot_info_version = BOOT_INFO_STRUCT_V1;
 
-    boot_info.kernel_image_info = get_kernel_image_info(kernel_image_info);
+    boot_info.kernel_image_info = kernel_image_info.to_higher_half();
 
     boot_info.frame_buffer_info = mboot.frame_buffer_info.clone().unwrap_or_default();
 
     boot_info.platform_info = get_platform_info(mboot);
-    boot_info.memory_map = get_memory_map(map);
+    boot_info.memory_map = MemoryMap::from_slice(map);
 
     boot_logger::get(|log| {
         boot_info.boot_logger = *log;
@@ -56,27 +54,11 @@ pub fn init_boot_info<'a>(
 
     boot_info.initrd_addr = initrd.start_addr().to_higher_half();
     boot_info.initrd_size = initrd.size();
-}
 
-/// This function translates all addresses to higher half
-fn get_kernel_image_info(kernel_image_info: &KernelImageInfo) -> KernelImageInfo {
-    KernelImageInfo {
-        stack: translate_range_to_higher_half(kernel_image_info.stack),
-        rodata: translate_optional_range_to_higher_half(kernel_image_info.rodata),
-        code: translate_range_to_higher_half(kernel_image_info.code),
-        relro: translate_optional_range_to_higher_half(kernel_image_info.relro),
-        data: translate_optional_range_to_higher_half(kernel_image_info.data),
-        heap: translate_range_to_higher_half(kernel_image_info.heap),
+    // Safety: this function is only called in the BSP
+    unsafe {
+        BOOT_INFO_HEADER = boot_info;
     }
-}
-
-fn translate_range_to_higher_half(range: VirtualRange) -> VirtualRange {
-    let page = Page::new(range.start_addr().to_higher_half());
-    VirtualRange::new(page, range.num_pages())
-}
-
-fn translate_optional_range_to_higher_half(range: Option<VirtualRange>) -> Option<VirtualRange> {
-    range.map(|rng| translate_range_to_higher_half(rng))
 }
 
 fn get_platform_info(mboot: &Multiboot2Info) -> PlatformInfo {
@@ -108,15 +90,4 @@ fn convert_rsdp(rsdp: multiboot2::RSDPDescriptor) -> pc_x86::Rsdp {
             reserved: rsdpv2.reserved,
         }),
     }
-}
-
-fn get_memory_map(map: &Vec<MemoryMapEntry>) -> MemoryMap {
-    assert!(map.len() <= MEMORY_MAP_ENTRIES);
-
-    let mut result = MemoryMap::new();
-    for (i, entry) in map.iter().enumerate() {
-        result.entries[i] = *entry;
-    }
-
-    result
 }

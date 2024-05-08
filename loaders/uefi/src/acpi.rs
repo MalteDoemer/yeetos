@@ -1,10 +1,12 @@
 use crate::arch::time::busy_sleep_us;
+use crate::entry::{make_jump_to_kernel, KERNEL_ENTRY};
 use acpi::AcpiTables;
-use multi_core::handler::{IdentityMapMode, IdentityMappedAcpiHandler};
 use kernel_image::KernelImage;
 use log::info;
 use memory::phys::PhysAddr;
 use memory::virt::VirtAddr;
+use multi_core::handler::{IdentityMapMode, IdentityMappedAcpiHandler};
+use spin::Once;
 use uefi::table::cfg::{ACPI2_GUID, ACPI_GUID};
 use uefi::table::{Boot, SystemTable};
 use x86::controlregs::cr3;
@@ -16,8 +18,6 @@ pub fn startup_all_application_processors(
     // Safety: we have CPL=0
     let cr3 = unsafe { cr3() };
     let pml4t_addr = PhysAddr::new(cr3);
-
-    info!("pml4t is at {:p}", pml4t_addr);
 
     multi_core::ap_startup::startup_all_application_processors(
         acpi_tables,
@@ -53,10 +53,14 @@ unsafe fn get_acpi_tables_impl(rsdp_addr: VirtAddr) -> AcpiTables<IdentityMapped
 }
 
 #[no_mangle]
-extern "C" fn rust_entry_ap(apic_id: u32) -> ! {
-    info!("application processor #{} started", apic_id);
+extern "C" fn rust_entry_ap(ap_id: usize) -> ! {
+    info!("application processor #{} started", ap_id);
 
-    loop {
-        crate::arch::halt();
-    }
+    // Load the new higher-half enabled page table
+    crate::paging::activate();
+
+    // this waits until the BSP is finished initializing
+    let entry_point = KERNEL_ENTRY.wait();
+    
+    make_jump_to_kernel(ap_id, *entry_point);
 }

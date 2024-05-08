@@ -13,7 +13,10 @@ pub enum MemoryMapEntryKind {
     Reserved,
     /// Memory cannot be used (defective)
     Unusable,
-
+    /// Code from the runtime environment (UEFI)
+    RuntimeServiceCode,
+    /// Code data the runtime environment (UEFI)
+    RuntimeServiceData,
     /// Memory is used for the initial kernel page tables (may be reused)
     KernelPageTables,
     /// Memory is used by the kernel loader (may be reused)
@@ -66,6 +69,18 @@ impl MemoryMap {
         Self {
             entries: [MemoryMapEntry::empty(); MEMORY_MAP_ENTRIES],
         }
+    }
+
+    pub fn from_slice(map: &[MemoryMapEntry]) -> Self {
+        assert!(map.len() <= MEMORY_MAP_ENTRIES);
+
+        let mut result = MemoryMap::new();
+
+        for (i, entry) in map.iter().enumerate() {
+            result.entries[i] = *entry;
+        }
+
+        result
     }
 
     pub fn entries(&self) -> impl Iterator<Item = &MemoryMapEntry> {

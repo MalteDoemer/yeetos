@@ -25,6 +25,7 @@ multi_core = { path = "../../crates/multi_core" }
 boot_logger = { path = "../../crates/boot_logger" }
 kernel_image = { path = "../../crates/kernel_image" }
 kernel_cmdline = { path = "../../crates/kernel_cmdline" }
+kernel_graphics = { path = "../../crates/kernel_graphics" }
 
 [dependencies.zeroize]
 version = "1.7.0"

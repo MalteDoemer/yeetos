@@ -2,13 +2,14 @@ use memory::{
     paging::{Entry, EntryFlags, Level2, Level3, Level4, Table, TableLevel},
     phys::{Frame, PhysAddr, PhysicalRange},
     virt::{Page, VirtAddr},
-    AccessFlags,
+    AccessFlags, KERNEL_BASE,
 };
 use spin::Once;
 use uefi::table::boot::{AllocateType, BootServices, MemoryType};
+use x86::controlregs::cr3_write;
 use zeroize::Zeroize;
 
-use crate::MEMORY_TYPE_KERNEL_PAGE_TABLES;
+use crate::mmap::MEMORY_TYPE_KERNEL_PAGE_TABLES;
 
 static PAGE_TABLES_MEMORY: Once<PhysicalRange> = Once::new();
 
@@ -31,10 +32,10 @@ pub fn prepare(boot_services: &BootServices) {
 
     let start_addr = start_addr.to_virt();
 
-    let (plm4t, pdpt, pds) = unsafe { get_tables_mut(start_addr) };
+    let (pml4t, pdpt, pds) = unsafe { get_tables_mut(start_addr) };
 
     // clear out the memory to all zero's
-    plm4t.zeroize();
+    pml4t.zeroize();
     pdpt.zeroize();
     pds[0].zeroize();
     pds[1].zeroize();
@@ -42,11 +43,15 @@ pub fn prepare(boot_services: &BootServices) {
     pds[3].zeroize();
 
     // the first PML4T entry points to the PDPT
-    plm4t[0] = Entry::table_entry(table_addr(pdpt));
+    pml4t[0] = Entry::table_entry(table_addr(pdpt));
+
+    // enable higher half mapping
+    let pml4t_high_index = (KERNEL_BASE >> 39) & 0x1FF;
+    pml4t[pml4t_high_index] = pml4t[0];
 
     // the last PML4T entry points to itself, this enables "recursive mapping"
-    let pml4t_addr = table_addr(plm4t);
-    plm4t[511] = Entry::table_entry(pml4t_addr);
+    let pml4t_addr = table_addr(pml4t);
+    pml4t[511] = Entry::table_entry(pml4t_addr);
 
     // write the PDPT entries to point to the PD
     for i in 0..4 {
@@ -83,7 +88,13 @@ pub fn get_kernel_page_tables_range() -> PhysicalRange {
         .expect("paging::get_kernel_page_tables_range() called before paging::prepare()")
 }
 
-pub fn activate() {}
+pub fn activate() {
+    let range = get_kernel_page_tables_range();
+    let addr = range.start_addr();
+    unsafe {
+        cr3_write(addr.to_inner());
+    }
+}
 
 fn table_addr<L: TableLevel>(table: &Table<L>) -> PhysAddr {
     let ptr = table as *const Table<L>;

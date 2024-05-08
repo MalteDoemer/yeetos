@@ -10,12 +10,16 @@ mod acpi;
 mod arch;
 mod boot_info;
 mod bootfs;
+mod entry;
 mod heap;
+mod mmap;
 mod paging;
 mod panic_handler;
 
 extern crate alloc;
 
+use crate::entry::{make_jump_to_kernel, KernelEntryInfo, KERNEL_ENTRY};
+use crate::mmap::MEMORY_TYPE_KERNEL_IMAGE;
 use alloc::format;
 use alloc::vec::Vec;
 use bootfs::BootFs;
@@ -24,14 +28,12 @@ use initrd::Initrd;
 use kernel_image::ParsedKernelImage;
 use log::info;
 use memory::{phys::PhysAddr, virt::VirtAddr, PAGE_SIZE};
+use uefi::table::boot::{MemoryAttribute, MemoryDescriptor};
+use uefi::table::Runtime;
 use uefi::{
     prelude::*,
     table::boot::{AllocateType, MemoryType},
 };
-
-pub const MEMORY_TYPE_BOOT_INFO: u32 = 0x80000005;
-pub const MEMORY_TYPE_KERNEL_IMAGE: u32 = 0x80000006;
-pub const MEMORY_TYPE_KERNEL_PAGE_TABLES: u32 = 0x80000007;
 
 #[entry]
 fn main(handle: Handle, system_table: SystemTable<Boot>) -> Status {
@@ -59,7 +61,7 @@ fn main(handle: Handle, system_table: SystemTable<Boot>) -> Status {
     let (mut initrd_file, initrd_pages) = bootfs.open_initrd().expect("unable to open initrd file");
 
     // Allocate memory for the boot info and INITRD
-    let (_boot_info_header, initrd_buffer) =
+    let (boot_info_header, initrd_buffer) =
         boot_info::allocate_boot_info(system_table.boot_services(), initrd_pages);
 
     // Load the INITRD into memory
@@ -111,6 +113,8 @@ fn main(handle: Handle, system_table: SystemTable<Boot>) -> Status {
 
     let kernel_image_info = kernel_image.kernel_image_info();
 
+    // Prepare paging structures. This function will allocate memory in order to identity and higher-half map the kernel
+    // But we will only switch to those page tables once exit_boot_services() has been called.
     paging::prepare(system_table.boot_services());
 
     info!(
@@ -125,12 +129,92 @@ fn main(handle: Handle, system_table: SystemTable<Boot>) -> Status {
     drop(bootfs);
 
     // Call exit_boot_services to transition over to full control over the system
-    let (system_table, _mmap) = system_table.exit_boot_services(MemoryType::LOADER_DATA);
+    let (system_table, mmap) = system_table.exit_boot_services(MemoryType::LOADER_DATA);
+
+    // Convert uefi memory map into our own representation
+    // This function also validates the memory map to ensure that everything is still accessible
+    // after enabling the higher half paging
+    let memory_map = mmap::create_memory_map(&mmap).expect("failed to create memory map");
+
+    // for entry in &memory_map {
+    //     info!(
+    //         "start={:p} size={:#x} type={:?}",
+    //         entry.start,
+    //         entry.size(),
+    //         entry.kind
+    //     );
+    // }
 
     // Start all application processors
     acpi::startup_all_application_processors(&acpi_tables, &kernel_image);
 
-    panic!("finished with main()");
+    // Load kernel image into memory
+    kernel_image.load_kernel().expect("failed to load kernel");
+
+    // Switch to our onw identity/higher-half page tables
+    paging::activate();
+
+    let system_table = set_virtual_address_map(system_table, &mmap)
+        .expect("unable to translate system table to higher half");
+
+    // Initialize boot info
+    boot_info::init_boot_info(
+        &system_table,
+        boot_info_header,
+        &memory_map,
+        &initrd,
+        kernel_image_info,
+    );
+
+    // BootInfoHeader is now initialized
+    let boot_info_header = unsafe { boot_info_header.assume_init_mut() };
+
+    let boot_info_addr = boot_info_header.boot_info_addr;
+    let entry_point = kernel_image.kernel_entry_point().to_higher_half();
+    let stacks_start = kernel_image_info.stack.start_addr().to_higher_half();
+    let stack_size = kernel_image.kernel_stack_size();
+
+    let entry = KernelEntryInfo {
+        boot_info_addr,
+        entry_point,
+        stacks_start,
+        stack_size,
+    };
+
+    KERNEL_ENTRY.call_once(|| entry);
+
+    make_jump_to_kernel(0, entry);
+}
+
+fn set_virtual_address_map(
+    system_table: SystemTable<Runtime>,
+    memory_map: &uefi::table::boot::MemoryMap,
+) -> uefi::Result<SystemTable<Runtime>, ()> {
+    let mut entries = Vec::<MemoryDescriptor>::new();
+
+    for entry in memory_map.entries() {
+        if entry.att.contains(MemoryAttribute::RUNTIME) {
+            let phys_addr = PhysAddr::new(entry.phys_start.try_into().unwrap());
+            let virt_addr = phys_addr.to_higher_half();
+
+            let mut desc = entry.clone();
+            desc.virt_start = virt_addr.to_inner().try_into().unwrap();
+            entries.push(desc);
+        }
+    }
+
+    let current_system_table_addr: usize = system_table
+        .get_current_system_table_addr()
+        .try_into()
+        .unwrap();
+
+    let new_system_table_addr: u64 = VirtAddr::new(current_system_table_addr)
+        .to_higher_half()
+        .to_inner()
+        .try_into()
+        .unwrap();
+
+    unsafe { system_table.set_virtual_address_map(&mut entries, new_system_table_addr) }
 }
 
 fn dump_memory_map(system_table: &mut SystemTable<Boot>) {

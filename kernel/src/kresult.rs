@@ -1,5 +1,8 @@
+
+#[derive(Debug, Copy, Clone)]
 pub enum KError {
     OutOfMemory,
+    DeallocError,
     InvalidArgument,
     Unknown,
 }

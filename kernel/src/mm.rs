@@ -1,3 +1,4 @@
+use boot_info::BootInfoHeader;
 use memory::phys::Frame;
 
 use crate::{arch, kresult::KResult};
@@ -15,4 +16,6 @@ pub fn get() -> &'static impl MemoryManager {
     arch::mm::get()
 }
 
-pub fn init() {}
+pub fn init(boot_info: &BootInfoHeader) {
+    arch::mm::init(boot_info)
+}

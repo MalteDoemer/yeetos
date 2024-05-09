@@ -6,8 +6,8 @@ use core::mem::MaybeUninit;
 use initrd::Initrd;
 use kernel_graphics::FrameBufferInfo;
 use kernel_image::KernelImageInfo;
-use memory::virt::{Page, VirtAddr, VirtualRange};
-use memory::{MemoryMap, MemoryMapEntry, MEMORY_MAP_ENTRIES, PAGE_SIZE};
+use memory::virt::VirtAddr;
+use memory::{MemoryMap, MemoryMapEntry, PAGE_SIZE};
 use uefi::table::boot::{AllocateType, BootServices, MemoryType};
 use uefi::table::{Runtime, SystemTable};
 
@@ -60,7 +60,7 @@ pub fn init_boot_info(
     boot_info.boot_info_version = BOOT_INFO_STRUCT_V1;
 
     boot_info.kernel_image_info = kernel_image_info.to_higher_half();
-    boot_info.frame_buffer_info = FrameBufferInfo::default();
+    boot_info.frame_buffer_info = FrameBufferInfo::empty();
     // panic!("here");
     boot_info.platform_info = get_platform_info(system_table);
 

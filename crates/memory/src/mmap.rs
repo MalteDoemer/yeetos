@@ -1,4 +1,4 @@
-use crate::phys::{Inner, PhysAddr, PhysicalRange};
+use crate::phys::{Frame, Inner, PhysAddr, PhysicalRange};
 
 /// Maximum number of memory map entries
 pub const MEMORY_MAP_ENTRIES: usize = 64;
@@ -29,9 +29,9 @@ pub enum MemoryMapEntryKind {
 
 #[derive(Debug, Clone, Copy)]
 pub struct MemoryMapEntry {
-    /// Start address of the region - page aligned
+    /// Start address of the region
     pub start: PhysAddr,
-    /// End address of the region - page aligned
+    /// End address of the region
     pub end: PhysAddr,
     /// Indicates the type of the memory in this entry
     pub kind: MemoryMapEntryKind,
@@ -56,6 +56,18 @@ impl MemoryMapEntry {
 
     pub fn is_frame_aligned(&self) -> bool {
         self.start.is_frame_aligned() && self.end.is_frame_aligned()
+    }
+
+    pub fn range_truncate(&self) -> PhysicalRange {
+        let start = self.start.frame_align_up();
+        let end = self.end.frame_align_down();
+        PhysicalRange::new_diff(Frame::new(start), Frame::new(end))
+    }
+
+    pub fn range_enclose(&self) -> PhysicalRange {
+        let start = self.start.frame_align_down();
+        let end = self.end.frame_align_up();
+        PhysicalRange::new_diff(Frame::new(start), Frame::new(end))
     }
 }
 

@@ -10,6 +10,8 @@
 #![feature(allocator_api)]
 // needed for idt.rs
 #![feature(abi_x86_interrupt)]
+// used by the memory manager
+#![feature(type_alias_impl_trait)]
 
 extern crate alloc;
 
@@ -17,6 +19,7 @@ use log::info;
 use spin::Once;
 
 use boot_info::BootInfoHeader;
+use mm::MemoryManager;
 
 mod arch;
 mod heap;
@@ -37,8 +40,14 @@ pub extern "C" fn kernel_main(boot_info: &BootInfoHeader, proc_id: usize) -> ! {
     arch::cpu::init(proc_id);
 
     ONCE.call_once(|| {
-        info!("FrameBuffer: {:?}", &boot_info.frame_buffer_info);
+        mm::init(boot_info);
+
+        // info!("FrameBuffer: {:?}", &boot_info.frame_buffer_info);
     });
+
+    let frame = mm::get().alloc_frame().expect("unable to allocate frame");
+
+    info!("[CPU {}]: got frame: {:?}", proc_id, frame);
 
     info!("[CPU {}]: done", proc_id);
     arch::cpu::halt();

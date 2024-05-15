@@ -23,6 +23,7 @@ log = "0.4.21"
 
 memory = { path = "../crates/memory" }
 boot_info = { path = "../crates/boot_info" }
+kernel_image = { path = "../crates/kernel_image" }
 kernel_graphics = { path = "../crates/kernel_graphics" }
 
 [dependencies.linked_list_allocator]

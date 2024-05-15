@@ -6,6 +6,8 @@
 // needed for checked ops in page and frame
 #![feature(const_option)]
 
+extern crate alloc;
+
 mod arch;
 mod misc;
 mod mmap;

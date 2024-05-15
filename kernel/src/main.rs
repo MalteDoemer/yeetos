@@ -16,18 +16,16 @@
 extern crate alloc;
 
 use log::info;
-use spin::Once;
 
+use crate::mm::GlobalFrameAllocator;
 use boot_info::BootInfoHeader;
-use mm::MemoryManager;
+use memory::phys::PageFrameAllocator;
 
 mod arch;
 mod heap;
 mod kresult;
 mod mm;
 mod panic_handler;
-
-static ONCE: Once<()> = Once::new();
 
 #[no_mangle]
 pub extern "C" fn kernel_main(boot_info: &BootInfoHeader, proc_id: usize) -> ! {
@@ -39,13 +37,9 @@ pub extern "C" fn kernel_main(boot_info: &BootInfoHeader, proc_id: usize) -> ! {
 
     arch::cpu::init(proc_id);
 
-    ONCE.call_once(|| {
-        mm::init(boot_info);
+    mm::init(boot_info);
 
-        // info!("FrameBuffer: {:?}", &boot_info.frame_buffer_info);
-    });
-
-    let frame = mm::get().alloc_frame().expect("unable to allocate frame");
+    let frame = GlobalFrameAllocator.alloc();
 
     info!("[CPU {}]: got frame: {:?}", proc_id, frame);
 

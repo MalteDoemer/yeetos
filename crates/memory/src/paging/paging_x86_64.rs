@@ -206,7 +206,7 @@ impl HierarchicalLevel for Level2 {
 }
 
 /// A `Table` represents any of the x86_64 paging tables.
-/// The type argument `L` defines which paging structure it referes to.
+/// The type argument `L` defines which paging structure it refers to.
 /// All `Table` structs have a size of 4KiB.
 #[repr(transparent)]
 #[derive(Zeroize)]

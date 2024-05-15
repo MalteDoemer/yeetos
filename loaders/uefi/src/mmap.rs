@@ -51,22 +51,20 @@ fn verify_memory_map(mmap: &Vec<MemoryMapEntry>) -> Result<(), MemoryMapError> {
 
     for entry in mmap.iter() {
         if !is_higher_half(entry) {
-            match entry.kind {
+            match entry.kind() {
                 MemoryMapEntryKind::RuntimeServiceCode => {
                     return Err(MemoryMapError::RuntimeServicesNotMappable)
                 }
                 MemoryMapEntryKind::RuntimeServiceData => {
                     return Err(MemoryMapError::RuntimeServicesNotMappable)
                 }
-                MemoryMapEntryKind::KernelPageTables => {
+                MemoryMapEntryKind::LoaderPageTables => {
                     return Err(MemoryMapError::KernelNotMappable)
                 }
-                MemoryMapEntryKind::KernelLoader => {
+                MemoryMapEntryKind::Loader => {
                     return Err(MemoryMapError::KernelNotMappable);
                 }
-                MemoryMapEntryKind::KernelBootInfo => {
-                    return Err(MemoryMapError::KernelNotMappable)
-                }
+                MemoryMapEntryKind::BootInfo => return Err(MemoryMapError::KernelNotMappable),
                 MemoryMapEntryKind::KernelImage => {
                     return Err(MemoryMapError::KernelNotMappable);
                 }
@@ -79,7 +77,8 @@ fn verify_memory_map(mmap: &Vec<MemoryMapEntry>) -> Result<(), MemoryMapError> {
 }
 
 fn is_higher_half(entry: &MemoryMapEntry) -> bool {
-    entry.start.to_higher_half_checked().is_some() && entry.end.to_higher_half_checked().is_some()
+    entry.start().to_higher_half_checked().is_some()
+        && entry.end().to_higher_half_checked().is_some()
 }
 
 fn translate(uefi_entry: &MemoryDescriptor) -> MemoryMapEntry {
@@ -91,39 +90,39 @@ fn translate(uefi_entry: &MemoryDescriptor) -> MemoryMapEntry {
 }
 
 fn can_merge(entry1: &MemoryMapEntry, entry2: &MemoryMapEntry) -> bool {
-    entry1.end == entry2.start && entry1.kind == entry2.kind
+    entry1.end() == entry2.start() && entry1.kind() == entry2.kind()
 }
 
 fn merge(entry1: &MemoryMapEntry, entry2: &MemoryMapEntry) -> MemoryMapEntry {
     assert!(can_merge(entry1, entry2));
 
-    MemoryMapEntry::new(entry1.start, entry2.end, entry1.kind)
+    MemoryMapEntry::new(entry1.start(), entry2.end(), entry1.kind())
 }
 
 fn map_memory_type(uefi_type: MemoryType) -> MemoryMapEntryKind {
     match uefi_type {
         MemoryType::RESERVED => MemoryMapEntryKind::Reserved,
-        MemoryType::LOADER_CODE => MemoryMapEntryKind::KernelLoader,
-        MemoryType::LOADER_DATA => MemoryMapEntryKind::KernelLoader,
+        MemoryType::LOADER_CODE => MemoryMapEntryKind::Loader,
+        MemoryType::LOADER_DATA => MemoryMapEntryKind::Loader,
         MemoryType::RUNTIME_SERVICES_CODE => MemoryMapEntryKind::RuntimeServiceCode,
         MemoryType::RUNTIME_SERVICES_DATA => MemoryMapEntryKind::RuntimeServiceData,
-        MemoryType::BOOT_SERVICES_CODE => MemoryMapEntryKind::Free,
-        MemoryType::BOOT_SERVICES_DATA => MemoryMapEntryKind::Free,
-        MemoryType::CONVENTIONAL => MemoryMapEntryKind::Free,
+        MemoryType::BOOT_SERVICES_CODE => MemoryMapEntryKind::Usable,
+        MemoryType::BOOT_SERVICES_DATA => MemoryMapEntryKind::Usable,
+        MemoryType::CONVENTIONAL => MemoryMapEntryKind::Usable,
 
-        MemoryType::UNUSABLE => MemoryMapEntryKind::Unusable,
-        MemoryType::ACPI_RECLAIM => MemoryMapEntryKind::Unusable,
-        MemoryType::ACPI_NON_VOLATILE => MemoryMapEntryKind::Unusable,
-        MemoryType::MMIO => MemoryMapEntryKind::Unusable,
-        MemoryType::MMIO_PORT_SPACE => MemoryMapEntryKind::Unusable,
-        MemoryType::PAL_CODE => MemoryMapEntryKind::Unusable,
-        MemoryType::PERSISTENT_MEMORY => MemoryMapEntryKind::Unusable,
+        MemoryType::UNUSABLE => MemoryMapEntryKind::Defective,
+        MemoryType::ACPI_RECLAIM => MemoryMapEntryKind::Defective,
+        MemoryType::ACPI_NON_VOLATILE => MemoryMapEntryKind::Defective,
+        MemoryType::MMIO => MemoryMapEntryKind::Defective,
+        MemoryType::MMIO_PORT_SPACE => MemoryMapEntryKind::Defective,
+        MemoryType::PAL_CODE => MemoryMapEntryKind::Defective,
+        MemoryType::PERSISTENT_MEMORY => MemoryMapEntryKind::Defective,
 
         MemoryType(custom) => match custom {
-            MEMORY_TYPE_BOOT_INFO => MemoryMapEntryKind::KernelBootInfo,
-            MEMORY_TYPE_KERNEL_PAGE_TABLES => MemoryMapEntryKind::KernelPageTables,
+            MEMORY_TYPE_BOOT_INFO => MemoryMapEntryKind::BootInfo,
+            MEMORY_TYPE_KERNEL_PAGE_TABLES => MemoryMapEntryKind::LoaderPageTables,
             MEMORY_TYPE_KERNEL_IMAGE => MemoryMapEntryKind::KernelImage,
-            _ => MemoryMapEntryKind::Unusable,
+            _ => MemoryMapEntryKind::Defective,
         },
     }
 }

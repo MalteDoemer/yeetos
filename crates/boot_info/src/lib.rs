@@ -1,5 +1,6 @@
 #![no_std]
 
+use arrayvec::ArrayVec;
 use boot_logger_info::BootLoggerInfo;
 use kernel_graphics::FrameBufferInfo;
 use kernel_image::KernelImageInfo;
@@ -65,7 +66,7 @@ impl BootInfoHeader {
             kernel_image_info: KernelImageInfo::empty(),
             frame_buffer_info: FrameBufferInfo::empty(),
             platform_info: PlatformInfo::None,
-            memory_map: MemoryMap::new(),
+            memory_map: MemoryMap::new(ArrayVec::new_const()),
             boot_logger: BootLoggerInfo::new_const(),
             initrd_addr: VirtAddr::zero(),
             initrd_size: 0,

@@ -25,7 +25,7 @@ impl AllocatorImpl {
             let vec: Vec<FrameBumpAllocator> = boot_info
                 .memory_map
                 .entries()
-                .filter(|entry| entry.kind == MemoryMapEntryKind::Free)
+                .filter(|entry| entry.kind() == MemoryMapEntryKind::Usable)
                 .map(|entry| FrameBumpAllocator::new(entry.range_truncate()))
                 .collect();
 

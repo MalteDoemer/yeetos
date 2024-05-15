@@ -92,7 +92,7 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
     // Note: this does not yet load the kernel.
 
     let kernel_image_base_addr = if kernel_cmdline.use_reloc() {
-        Some(initrd.end_addr())
+        Some(initrd.end_addr().page_align_up())
     } else {
         None
     };
@@ -111,14 +111,14 @@ pub extern "C" fn rust_entry(mboot_ptr: usize) -> ! {
     // Create the physical memory map
     let memory_map = mmap::create_memory_map(
         &mboot_info,
-        initrd.end_addr().to_phys(),
+        initrd.end_addr().page_align_up().to_phys(),
         kernel_image_info.end().to_phys(),
     );
 
     for entry in &memory_map {
         info!(
             "start={:p} end={:p} type={:?}",
-            entry.start, entry.end, entry.kind
+            entry.start(), entry.end(), entry.kind()
         );
     }
 

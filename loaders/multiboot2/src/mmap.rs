@@ -32,10 +32,10 @@ mod arch {
 
     fn convert_region_to_entry(region: multiboot2::MemoryRegion) -> MemoryMapEntry {
         let kind = match region.region_type {
-            1 => MemoryMapEntryKind::Free,
+            1 => MemoryMapEntryKind::Usable,
             3 => MemoryMapEntryKind::Reserved, // Usable ACPI Information
             4 => MemoryMapEntryKind::Reserved, // Reserved but preserve on hibernation
-            5 => MemoryMapEntryKind::Unusable,
+            5 => MemoryMapEntryKind::Defective,
             _ => MemoryMapEntryKind::Reserved,
         };
 
@@ -46,7 +46,7 @@ mod arch {
             MemoryMapEntry::new(start, end, kind)
         } else {
             // now we have a memory map entry that starts below u32::MAX
-            // and ends above u32::MAX so we have to split it at u32::MAX
+            // and ends above u32::MAX, so we have to split it at u32::MAX
 
             let start = (region.base_addr as u32).into();
             let end = u32::MAX.into();
@@ -78,10 +78,10 @@ mod arch {
 
     fn convert_region_to_entry(region: multiboot2::MemoryRegion) -> MemoryMapEntry {
         let kind = match region.region_type {
-            1 => MemoryMapEntryKind::Free,
+            1 => MemoryMapEntryKind::Usable,
             3 => MemoryMapEntryKind::Reserved, // Usable ACPI Information
             4 => MemoryMapEntryKind::Reserved, // Reserved but preserve on hibernation
-            5 => MemoryMapEntryKind::Unusable,
+            5 => MemoryMapEntryKind::Defective,
             _ => MemoryMapEntryKind::Reserved,
         };
 
@@ -115,18 +115,18 @@ pub fn create_memory_map(
     let mut memory_map = arch::translate_memory_regions(&mboot.memory_regions);
 
     for entry in hardcoded_entries {
-        let start_idx = find_mmap_entry_containing(entry.start, &memory_map)
+        let start_idx = find_mmap_entry_containing(entry.start(), &memory_map)
             .expect("hardcoded memory map entry is not covered by any memory region");
 
-        let end_idx = find_mmap_entry_containing(entry.end, &memory_map)
+        let end_idx = find_mmap_entry_containing(entry.end(), &memory_map)
             .expect("hardcoded memory map entry is not covered by any memory region");
 
         if start_idx != end_idx {
             panic!("hardcoded memory map entry spans over multiple memory regions");
         }
 
-        match memory_map[start_idx].kind {
-            MemoryMapEntryKind::Free => {}
+        match memory_map[start_idx].kind() {
+            MemoryMapEntryKind::Usable => {}
             _ => panic!("hardcoded memory map entry is not in a usable memory region"),
         }
 
@@ -154,24 +154,23 @@ fn split_mmap_entry(
     big: MemoryMapEntry,
     small: MemoryMapEntry,
 ) -> (MemoryMapEntry, MemoryMapEntry, MemoryMapEntry) {
-    debug_assert!(big.start <= small.start && big.end >= small.end);
+    debug_assert!(big.start() <= small.start() && big.end() >= small.end());
 
     // Split region into three parts:
-    // 1. big.start..small.start
-    // 2. small.start..small.end
-    // 3. small.end..big.end
+    // 1. big.start...small.start
+    // 2. small.start...small.end
+    // 3. small.end...big.end
 
-    let pre = MemoryMapEntry::new(big.start, small.start, big.kind);
-    let post = MemoryMapEntry::new(small.end, big.end, big.kind);
+    let pre = MemoryMapEntry::new(big.start(), small.start(), big.kind());
+    let post = MemoryMapEntry::new(small.end(), big.end(), big.kind());
 
     (pre, small, post)
 }
 
 fn find_mmap_entry_containing(addr: PhysAddr, entries: &[MemoryMapEntry]) -> Option<usize> {
     // for now just a linear search since the mem_regions vector is probably quite small
-
     for (i, entry) in entries.iter().enumerate() {
-        if addr >= entry.start && addr < entry.end {
+        if addr >= entry.start() && addr < entry.end() {
             return Some(i);
         }
     }
@@ -179,31 +178,40 @@ fn find_mmap_entry_containing(addr: PhysAddr, entries: &[MemoryMapEntry]) -> Opt
     None
 }
 
-/// This function checks that implictly assumed properties
+/// This function checks that implicitly assumed properties
 /// of the hardcoded memory map entries are true.
 ///
 /// These include:
 /// - The order is preserved: page_tables <= loader <= boot_info <= kernel_image
 /// - There is no overlap
+/// - They are page-aligned
 fn verify_hardcoded_mmap_entries(
     page_tables: MemoryMapEntry,
     loader: MemoryMapEntry,
     boot_info: MemoryMapEntry,
     kernel_image: MemoryMapEntry,
 ) {
-    if page_tables.start > page_tables.end
-        || loader.start > loader.end
-        || boot_info.start > boot_info.end
-        || kernel_image.start > kernel_image.end
+    if page_tables.start() > page_tables.end()
+        || loader.start() > loader.end()
+        || boot_info.start() > boot_info.end()
+        || kernel_image.start() > kernel_image.end()
     {
         panic!("some of the hardcoded memory map entries have negative size");
     }
 
-    if page_tables.end > loader.start
-        || loader.end > boot_info.start
-        || boot_info.end > kernel_image.start
+    if page_tables.end() > loader.start()
+        || loader.end() > boot_info.start()
+        || boot_info.end() > kernel_image.start()
     {
         panic!("the order of the hardcoded memory map entries is not preserved");
+    }
+
+    if !page_tables.is_frame_aligned()
+        || !loader.is_frame_aligned()
+        || !boot_info.is_frame_aligned()
+        || !kernel_image.is_frame_aligned()
+    {
+        panic!("the hardcoded memory map entries must be page-aligned");
     }
 }
 
@@ -214,8 +222,7 @@ fn verify_hardcoded_mmap_entries(
 /// - There is at least one memory region
 /// - Memory regions are in ascending order
 fn verify_memory_regions(mem_regions: &[MemoryRegion]) {
-    // TODO: maybe propagate errors to rust_entry() instead of
-    // panicking directly here?
+    // TODO: maybe propagate errors to rust_entry() instead of panicking directly here?
 
     if mem_regions.is_empty() {
         panic!("no memory regions from multiboot2");
@@ -241,11 +248,11 @@ fn get_page_tables_entry() -> MemoryMapEntry {
     let start_addr = 0;
     let end_addr = 0x7000;
 
-    MemoryMapEntry {
-        start: PhysAddr::new(start_addr),
-        end: PhysAddr::new(end_addr),
-        kind: MemoryMapEntryKind::KernelPageTables,
-    }
+    MemoryMapEntry::new(
+        PhysAddr::new(start_addr),
+        PhysAddr::new(end_addr),
+        MemoryMapEntryKind::LoaderPageTables,
+    )
 }
 
 fn get_loader_entry() -> MemoryMapEntry {
@@ -260,11 +267,11 @@ fn get_loader_entry() -> MemoryMapEntry {
     let loader_start = __load_start as arch::AddrType;
     let loader_end = __boot_info_start as arch::AddrType;
 
-    MemoryMapEntry {
-        start: PhysAddr::new(loader_start),
-        end: PhysAddr::new(loader_end),
-        kind: MemoryMapEntryKind::KernelLoader,
-    }
+    MemoryMapEntry::new(
+        PhysAddr::new(loader_start),
+        PhysAddr::new(loader_end),
+        MemoryMapEntryKind::Loader,
+    )
 }
 
 fn get_boot_info_entry(initrd_end_addr: PhysAddr) -> MemoryMapEntry {
@@ -277,17 +284,17 @@ fn get_boot_info_entry(initrd_end_addr: PhysAddr) -> MemoryMapEntry {
     // physical address = virtual address
     let boot_info_start = __boot_info_start as arch::AddrType;
 
-    MemoryMapEntry {
-        start: PhysAddr::new(boot_info_start),
-        end: initrd_end_addr,
-        kind: MemoryMapEntryKind::KernelBootInfo,
-    }
+    MemoryMapEntry::new(
+        PhysAddr::new(boot_info_start),
+        initrd_end_addr,
+        MemoryMapEntryKind::BootInfo,
+    )
 }
 
 fn get_kernel_image_entry(initrd_end_addr: PhysAddr, kernel_end_addr: PhysAddr) -> MemoryMapEntry {
-    MemoryMapEntry {
-        start: initrd_end_addr,
-        end: kernel_end_addr,
-        kind: MemoryMapEntryKind::KernelImage,
-    }
+    MemoryMapEntry::new(
+        initrd_end_addr,
+        kernel_end_addr,
+        MemoryMapEntryKind::KernelImage,
+    )
 }

@@ -140,16 +140,15 @@ fn get_memory_regions<'a>(
     map: &'a MemoryMap,
     kernel_image_info: &KernelImageInfo,
 ) -> impl Iterator<Item = InitialKernelRegion> + 'a {
-    let map_entries = map.entries.iter().filter(|entry| match entry.kind {
-        MemoryMapEntryKind::None => false,
-        MemoryMapEntryKind::Free => false,
+    let map_entries = map.entries().filter(|entry| match entry.kind() {
+        MemoryMapEntryKind::Usable => false,
         MemoryMapEntryKind::Reserved => false,
-        MemoryMapEntryKind::Unusable => false,
+        MemoryMapEntryKind::Defective => false,
         MemoryMapEntryKind::RuntimeServiceCode => true,
         MemoryMapEntryKind::RuntimeServiceData => true,
-        MemoryMapEntryKind::KernelPageTables => true,
-        MemoryMapEntryKind::KernelLoader => true,
-        MemoryMapEntryKind::KernelBootInfo => true,
+        MemoryMapEntryKind::LoaderPageTables => true,
+        MemoryMapEntryKind::Loader => true,
+        MemoryMapEntryKind::BootInfo => true,
         MemoryMapEntryKind::KernelImage => false, // handled separately
     });
 
@@ -162,16 +161,15 @@ fn get_memory_regions<'a>(
 }
 
 fn translate_entry(entry: &MemoryMapEntry) -> Option<InitialKernelRegion> {
-    
     if !entry.is_frame_aligned() {
-        panic!("entry {:?} is not frame aligned", entry.kind);
+        panic!("entry {:?} is not frame aligned", entry.kind());
     }
-    
+
     // assert!(entry.is_frame_aligned());
     let phys = entry.range_enclose();
     let virt = translate_phys_range(phys)?;
 
-    let flags = translate_access(entry.kind);
+    let flags = translate_access(entry.kind());
 
     Some(InitialKernelRegion {
         virt_range: virt,
@@ -242,9 +240,9 @@ fn translate_access(kind: MemoryMapEntryKind) -> AccessFlags {
     match kind {
         MemoryMapEntryKind::RuntimeServiceCode => AccessFlags::READ_EXEC,
         MemoryMapEntryKind::RuntimeServiceData => AccessFlags::READ_WRITE,
-        MemoryMapEntryKind::KernelPageTables => AccessFlags::READ,
-        MemoryMapEntryKind::KernelLoader => AccessFlags::READ,
-        MemoryMapEntryKind::KernelBootInfo => AccessFlags::READ,
+        MemoryMapEntryKind::LoaderPageTables => AccessFlags::READ,
+        MemoryMapEntryKind::Loader => AccessFlags::READ,
+        MemoryMapEntryKind::BootInfo => AccessFlags::READ,
         _ => AccessFlags::empty(),
     }
 }

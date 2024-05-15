@@ -10,10 +10,7 @@ use boot_info::{
 };
 use initrd::Initrd;
 use kernel_image::KernelImageInfo;
-use memory::{
-    virt::{Page, VirtAddr, VirtualRange},
-    MemoryMap, MemoryMapEntry, MEMORY_MAP_ENTRIES,
-};
+use memory::{virt::VirtAddr, MemoryMap, MemoryMapEntry};
 
 use crate::multiboot2::{self, Multiboot2Info};
 

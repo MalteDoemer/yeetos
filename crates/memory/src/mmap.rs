@@ -1,28 +1,27 @@
 use crate::phys::{Frame, Inner, PhysAddr, PhysicalRange};
+use arrayvec::ArrayVec;
 
 /// Maximum number of memory map entries
 pub const MEMORY_MAP_ENTRIES: usize = 64;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MemoryMapEntryKind {
-    /// This entry is unused
-    None,
     /// Memory is free to use
-    Free,
-    /// Memory is used by the firmeware / hardware mapped
+    Usable,
+    /// Memory is used by the firmware / hardware mapped
     Reserved,
     /// Memory cannot be used (defective)
-    Unusable,
+    Defective,
     /// Code from the runtime environment (UEFI)
     RuntimeServiceCode,
     /// Code data the runtime environment (UEFI)
     RuntimeServiceData,
-    /// Memory is used for the initial kernel page tables (may be reused)
-    KernelPageTables,
-    /// Memory is used by the kernel loader (may be reused)
-    KernelLoader,
-    /// Memory is used for the boot info structure (may be reused)
-    KernelBootInfo,
+    /// Memory is used for the initial page tables used by the loader and early kernel (can be reused)
+    LoaderPageTables,
+    /// Memory is used by the kernel loader (can be reused)
+    Loader,
+    /// Memory is used for the boot info structure (can be reused)
+    BootInfo,
     /// Memory is used by the kernel image
     KernelImage,
 }
@@ -30,24 +29,26 @@ pub enum MemoryMapEntryKind {
 #[derive(Debug, Clone, Copy)]
 pub struct MemoryMapEntry {
     /// Start address of the region
-    pub start: PhysAddr,
+    start: PhysAddr,
     /// End address of the region
-    pub end: PhysAddr,
+    end: PhysAddr,
     /// Indicates the type of the memory in this entry
-    pub kind: MemoryMapEntryKind,
+    kind: MemoryMapEntryKind,
 }
 
 impl MemoryMapEntry {
-    pub const fn empty() -> Self {
-        Self {
-            start: PhysAddr::zero(),
-            end: PhysAddr::zero(),
-            kind: MemoryMapEntryKind::None,
-        }
-    }
-
     pub fn new(start: PhysAddr, end: PhysAddr, kind: MemoryMapEntryKind) -> Self {
         Self { start, end, kind }
+    }
+
+    pub fn start(&self) -> PhysAddr {
+        self.start
+    }
+    pub fn end(&self) -> PhysAddr {
+        self.end
+    }
+    pub fn kind(&self) -> MemoryMapEntryKind {
+        self.kind
     }
 
     pub fn size(&self) -> Inner {
@@ -71,34 +72,25 @@ impl MemoryMapEntry {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug)]
 pub struct MemoryMap {
-    pub entries: [MemoryMapEntry; MEMORY_MAP_ENTRIES],
+    entries: ArrayVec<MemoryMapEntry, MEMORY_MAP_ENTRIES>,
 }
 
 impl MemoryMap {
-    pub const fn new() -> Self {
-        Self {
-            entries: [MemoryMapEntry::empty(); MEMORY_MAP_ENTRIES],
-        }
+    pub const fn new(vec: ArrayVec<MemoryMapEntry, MEMORY_MAP_ENTRIES>) -> Self {
+        Self { entries: vec }
     }
 
     pub fn from_slice(map: &[MemoryMapEntry]) -> Self {
         assert!(map.len() <= MEMORY_MAP_ENTRIES);
-
-        let mut result = MemoryMap::new();
-
-        for (i, entry) in map.iter().enumerate() {
-            result.entries[i] = *entry;
-        }
-
-        result
+        let iter = map.iter().map(|e| *e);
+        let vec = ArrayVec::from_iter(iter);
+        Self::new(vec)
     }
 
     pub fn entries(&self) -> impl Iterator<Item = &MemoryMapEntry> {
-        self.entries
-            .iter()
-            .filter(|entry| entry.kind != MemoryMapEntryKind::None)
+        self.entries.iter()
     }
 
     pub fn first(&self) -> &MemoryMapEntry {
@@ -145,7 +137,7 @@ impl MemoryMap {
 
     pub fn is_usable(&self, range: PhysicalRange) -> bool {
         if let Some(mut iter) = self.entries_for_range(range) {
-            iter.all(|entry| entry.kind == MemoryMapEntryKind::Free)
+            iter.all(|entry| entry.kind == MemoryMapEntryKind::Usable)
         } else {
             false
         }

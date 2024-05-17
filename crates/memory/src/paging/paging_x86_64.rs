@@ -128,9 +128,11 @@ impl Entry {
             flags.insert(EntryFlags::WRITABLE);
         }
 
+        //TODO: only insert NO_EXECUTE once this feature is enabled
+        /*
         if !access.contains(AccessFlags::EXEC) {
             flags.insert(EntryFlags::NO_EXECUTE);
-        }
+        }*/
 
         let mut entry = Entry(0);
         entry.set_addr(addr.to_inner());

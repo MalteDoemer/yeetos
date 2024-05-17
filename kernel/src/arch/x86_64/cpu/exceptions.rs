@@ -1,6 +1,8 @@
 #![allow(improper_ctypes_definitions)]
 
 use super::idt::InterruptStackFrame;
+use core::arch::asm;
+use x86::controlregs::cr2;
 
 pub extern "x86-interrupt" fn divide_by_zero(_frame: InterruptStackFrame) {
     panic!("divide by zero");
@@ -35,7 +37,38 @@ pub extern "x86-interrupt" fn device_not_available(_frame: InterruptStackFrame) 
 }
 
 pub extern "x86-interrupt" fn double_fault(_frame: InterruptStackFrame, error_code: u64) {
-    panic!("double fault: {:#x}", error_code);
+    unsafe {
+        asm!(
+            "mov dx, 0x3F8",
+            "mov al, 0x64",
+            "out dx, al",
+            "mov al, 0x6f",
+            "out dx, al",
+            "mov al, 0x75",
+            "out dx, al",
+            "mov al, 0x62",
+            "out dx, al",
+            "mov al, 0x6c",
+            "out dx, al",
+            "mov al, 0x65",
+            "out dx, al",
+            "mov al, 0x20",
+            "out dx, al",
+            "mov al, 0x66",
+            "out dx, al",
+            "mov al, 0x61",
+            "out dx, al",
+            "mov al, 0x75",
+            "out dx, al",
+            "mov al, 0x6c",
+            "out dx, al",
+            "mov al, 0x74",
+            "out dx, al",
+            "mov al, 0x0a",
+            "out dx, al",
+            "hlt",
+        );
+    }
 }
 
 pub extern "x86-interrupt" fn invalid_tss(_frame: InterruptStackFrame, error_code: u64) {
@@ -58,7 +91,8 @@ pub extern "x86-interrupt" fn general_protection_fault(
 }
 
 pub extern "x86-interrupt" fn page_fault(_frame: InterruptStackFrame, error_code: u64) {
-    panic!("page fault: {:#x}", error_code);
+    let page_fault_address = unsafe { cr2() };
+    panic!("page fault at {:#x}: {:#x}", page_fault_address, error_code);
 }
 
 pub extern "x86-interrupt" fn floating_point_exception(_frame: InterruptStackFrame) {

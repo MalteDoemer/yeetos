@@ -15,6 +15,8 @@
 
 extern crate alloc;
 
+use alloc::boxed::Box;
+use core::arch::asm;
 use log::info;
 
 use crate::mm::GlobalFrameAllocator;
@@ -40,7 +42,6 @@ pub extern "C" fn kernel_main(boot_info: &BootInfoHeader, proc_id: usize) -> ! {
     mm::init(boot_info);
 
     let frame = GlobalFrameAllocator.alloc();
-
     info!("[CPU {}]: got frame: {:?}", proc_id, frame);
 
     info!("[CPU {}]: done", proc_id);

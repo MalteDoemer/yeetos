@@ -562,8 +562,18 @@ impl<'a> KernelImage<'a> {
                 let addr = VirtAddr::new(data);
 
                 if is_identity_mapped_higher_half_address(addr) {
-                    let reloc = image_base_mem + (addr - image_base_file);
-                    data = reloc.to_inner();
+                    // Note:
+                    // - addr is a higher half address
+                    // - image_base_file is a higher half address
+                    // - image_base_mem is a lower half address
+                    //
+                    // Thus when calculating `image_base_mem + (addr - image_base_file)`
+                    // we only get a lower half address, and thus we need to translate it into higher half again
+
+                    let reloc_lower = image_base_mem + (addr - image_base_file);
+                    let reloc_higher = reloc_lower.to_higher_half();
+
+                    data = reloc_higher.to_inner();
                     core::ptr::write(ptr, data);
                 }
 

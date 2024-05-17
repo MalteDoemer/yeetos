@@ -85,11 +85,13 @@ reload_cs_ap:
      *                                                                          *
      *  The local apic id is obtained either by reading from IA32_X2APIC_APICID *
      *  when we are in X2Apic mode or by using cpuid when we are in XAPIC mode. *
+     *                                                                          *
+     *  Note: the stack grows downwards, so we have to load the highest usable  *
+     *  address of this cores stack area into rsp and not the start address.    *
      * ------------------------------------------------------------------------ */
 
     // find out if we are in X2APIC or XAPIC mode
     // and load the apic id into %ebx
-
 
     // read IA32_APIC_BASE msr
     movl $0x1b, %ecx
@@ -127,7 +129,7 @@ calc_stack:
     cmpl %ebp, %ebx
     jge apic_id_invalid
 
-    // now calculate the top of the stack with: base + size * apic_id
+    // now calculate the top of the stack with: base + size * (apic_id + 1) - 8
 
     // load the size of each stack
     movl %esi, %eax
@@ -135,6 +137,10 @@ calc_stack:
     // multiply stack size with processor id
     mull %ebx
 
+    // add the stack size once again, because we need the end address, not the start address
+    addl %esi, %eax
+
+    // add the base address of the kernel stack area
     addl %edi, %eax 
 
     // finnally load the stack pointer

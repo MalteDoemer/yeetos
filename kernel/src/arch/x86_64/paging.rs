@@ -1,8 +1,8 @@
 use crate::mm::GlobalFrameAllocator;
 use alloc::vec::Vec;
+use core::arch::asm;
 use boot_info::BootInfoHeader;
 use kernel_image::KernelImageInfo;
-use log::info;
 use memory::paging::{Entry, EntryUsage, Level1, Level2, Level3, Level4, Table, TableLevel};
 use memory::phys::{Frame, PageFrameAllocator, PhysAddr, PhysicalRange};
 use memory::virt::{Page, VirtualRange};
@@ -10,6 +10,8 @@ use memory::{
     AccessFlags, MemoryMap, MemoryMapEntry, MemoryMapEntryKind, KERNEL_BASE, PAGE_TABLE_ENTRIES,
 };
 use spin::Once;
+use x86::controlregs::cr3_write;
+use zeroize::Zeroize;
 
 const P4_KERNEL_START_IDX: usize = (KERNEL_BASE >> 39) & 0x1FF;
 const P4_KERNEL_END_IDX: usize = PAGE_TABLE_ENTRIES - 2;
@@ -21,7 +23,6 @@ static mut INITIAL_P4_ADDR: PhysAddr = PhysAddr::zero();
 static mut KERNEL_P3_ADDRS: [PhysAddr; NUM_KERNEL_P3_TABLES] =
     [PhysAddr::zero(); NUM_KERNEL_P3_TABLES];
 
-#[derive(Debug)]
 struct InitialKernelRegion {
     virt_range: VirtualRange,
     phys_range: PhysicalRange,
@@ -40,10 +41,6 @@ fn init_once(boot_info: &BootInfoHeader) -> Option<()> {
     let regions: Vec<InitialKernelRegion> =
         get_memory_regions(&boot_info.memory_map, &boot_info.kernel_image_info).collect();
 
-    for region in &regions {
-        info!("Got a region: {:?}", region);
-    }
-
     unsafe {
         map_initial_kernel_region(&regions);
     }
@@ -55,10 +52,15 @@ fn init_p4_and_p3s() -> Option<()> {
     let p4_addr = alloc_table()?;
     let p4 = unsafe { get_init_table::<Level4>(p4_addr) }?;
 
+    p4.zeroize();
+
     for i in 0..NUM_KERNEL_P3_TABLES {
         let idx = i + P4_KERNEL_START_IDX;
 
         let p3_addr = alloc_table()?;
+
+        let p3 = unsafe { get_init_table::<Level3>(p3_addr)? };
+        p3.zeroize();
 
         unsafe {
             KERNEL_P3_ADDRS[i] = p3_addr;
@@ -112,6 +114,10 @@ unsafe fn map_initial_page(page: Page, frame: Frame, access_flags: AccessFlags) 
         EntryUsage::Table => PhysAddr::new(p2_entry.addr()),
         EntryUsage::None => {
             let addr = GlobalFrameAllocator.alloc()?.to_addr();
+
+            let table = unsafe { get_init_table::<Level2>(addr)? };
+            table.zeroize();
+
             *p2_entry = Entry::table_entry(addr);
             addr
         }
@@ -124,6 +130,10 @@ unsafe fn map_initial_page(page: Page, frame: Frame, access_flags: AccessFlags) 
         EntryUsage::Table => PhysAddr::new(p1_entry.addr()),
         EntryUsage::None => {
             let addr = GlobalFrameAllocator.alloc()?.to_addr();
+
+            let table = unsafe { get_init_table::<Level1>(addr)? };
+            table.zeroize();
+
             *p1_entry = Entry::table_entry(addr);
             addr
         }
@@ -131,6 +141,7 @@ unsafe fn map_initial_page(page: Page, frame: Frame, access_flags: AccessFlags) 
     };
     let p1 = unsafe { get_init_table::<Level1>(p1_addr)? };
 
+    // info!("mapping page={:p} to frame={:p}", page.to_addr(), frame.to_addr());
     p1[p1_idx] = Entry::page_entry(frame.to_addr(), access_flags);
 
     Some(())
@@ -259,4 +270,9 @@ fn translate_virt_range(range: VirtualRange) -> Option<PhysicalRange> {
     Some(PhysicalRange::new_diff(Frame::new(start), Frame::new(end)))
 }
 
-fn init_all() {}
+fn init_all() {
+    unsafe {
+        let addr = INITIAL_P4_ADDR;
+        cr3_write(addr.to_inner());
+    }
+}

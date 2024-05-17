@@ -50,8 +50,8 @@ mod x86 {
     pub const FRAME_SIZE: u32 = 4096;
     pub const FRAME_SHIFT: u32 = 12;
 
-    pub const LAREGE_PAGE_SIZE: usize = 0x400000; // 2 MiB
-    pub const LAREGE_PAGE_SHIFT: usize = 22;
+    pub const LARGE_PAGE_SIZE: usize = 0x400000; // 2 MiB
+    pub const LARGE_PAGE_SHIFT: usize = 22;
 
     pub const LARGE_FRAME_SIZE: u32 = 0x400000; // 2 MiB
     pub const LARGE_FRAME_SHIFT: u32 = 22;

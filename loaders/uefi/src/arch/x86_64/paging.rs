@@ -26,7 +26,7 @@ pub fn prepare(boot_services: &BootServices) {
     );
 
     let start_addr = PhysAddr::new(frames.expect("unable to allocate physical pages"));
-    let memory = PhysicalRange::new(Frame::new(start_addr), num_frames);
+    let memory = PhysicalRange::with_size(Frame::new(start_addr), num_frames);
 
     let start_addr = start_addr.to_virt();
 

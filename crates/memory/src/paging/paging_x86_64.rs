@@ -6,7 +6,7 @@ use zeroize::Zeroize;
 use crate::{phys::PhysAddr, virt::Page, AccessFlags, FRAME_SIZE, PAGE_TABLE_ENTRIES};
 
 #[repr(u8)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum EntryUsage {
     None = 0,
     Page = 1,

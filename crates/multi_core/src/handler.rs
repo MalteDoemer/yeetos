@@ -28,7 +28,7 @@ impl IdentityMappedAcpiHandler {
     pub fn lower_half() -> Self {
         let start_addr = PhysAddr::zero();
         let end_addr = PhysAddr::new(IDENTITY_MAP_SIZE.try_into().unwrap());
-        let range = PhysicalRange::new_diff(Frame::new(start_addr), Frame::new(end_addr));
+        let range = PhysicalRange::new(Frame::new(start_addr), Frame::new(end_addr));
         Self::new(IdentityMapMode::Range(range))
     }
 
@@ -40,7 +40,7 @@ impl IdentityMappedAcpiHandler {
         match self.mode {
             IdentityMapMode::All => addr.to_virt_checked(),
             IdentityMapMode::Range(range) => {
-                let range_to_map = PhysicalRange::new(
+                let range_to_map = PhysicalRange::with_size(
                     Frame::new(addr),
                     size.checked_next_multiple_of(FRAME_SIZE)? / FRAME_SIZE,
                 );

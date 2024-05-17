@@ -60,13 +60,13 @@ impl MemoryMapEntry {
     pub fn range_truncate(&self) -> PhysicalRange {
         let start = self.start.frame_align_up();
         let end = self.end.frame_align_down();
-        PhysicalRange::new_diff(Frame::new(start), Frame::new(end))
+        PhysicalRange::new(Frame::new(start), Frame::new(end))
     }
 
     pub fn range_enclose(&self) -> PhysicalRange {
         let start = self.start.frame_align_down();
         let end = self.end.frame_align_up();
-        PhysicalRange::new_diff(Frame::new(start), Frame::new(end))
+        PhysicalRange::new(Frame::new(start), Frame::new(end))
     }
 }
 

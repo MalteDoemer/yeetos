@@ -98,7 +98,7 @@ pub const fn is_identity_mapped_higher_half_address(addr: VirtAddr) -> bool {
 }
 
 /// Translates a higher-half virtual address to a lower-half virtual address.
-pub const fn to_lower_half_virt(addr: VirtAddr) -> Option<VirtAddr> {
+pub const fn virt_to_lower_half_checked(addr: VirtAddr) -> Option<VirtAddr> {
     if is_identity_mapped_higher_half_address(addr) {
         let inner = addr.to_inner();
         // Note: we don't need checked_sub() here since we used  is_identity_mapped_higher_half_address()

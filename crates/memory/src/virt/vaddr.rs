@@ -1,6 +1,8 @@
 use core::{fmt, ops};
 
-use crate::{phys::PhysAddr, virt_to_higher_half_checked, PAGE_SHIFT, PAGE_SIZE};
+use crate::{
+    phys::PhysAddr, virt_to_higher_half_checked, virt_to_lower_half_checked, PAGE_SHIFT, PAGE_SIZE,
+};
 
 pub struct TryFromPhysAddrError;
 
@@ -45,7 +47,7 @@ impl VirtAddr {
 
     /// Aligns the address up to `PAGE_SIZE`.
     ///
-    /// ### Panics
+    /// # Panics
     /// based on the `overflow-checks` setting
     pub fn page_align_up(self) -> Self {
         let addr = self.0.next_multiple_of(PAGE_SIZE);
@@ -69,8 +71,8 @@ impl VirtAddr {
     /// Casts this virtual address to a physical address.
     /// This does a bit by bit conversion, not a translation.
     ///
-    /// ## Panics
-    /// Panics if the virtual address is to big to fit in a physical address.
+    /// # Panics
+    /// Panics if the virtual address is too big to fit in a physical address.
     pub fn to_phys(self) -> PhysAddr {
         self.try_into().unwrap()
     }
@@ -86,6 +88,19 @@ impl VirtAddr {
     pub fn to_higher_half(self) -> VirtAddr {
         self.to_higher_half_checked()
             .expect("unable to translate address to higher half")
+    }
+
+    /// Translates a higher-half virtual address to a lower-half virtual address.
+    pub fn to_lower_half_checked(self) -> Option<VirtAddr> {
+        virt_to_lower_half_checked(self)
+    }
+
+    /// Translates a higher-half virtual address to a lower-half virtual address.
+    /// # Panics
+    /// Panics if the translation fails, i.e. if `self` is not a correct higher-half address.
+    pub fn to_lower_half(self) -> VirtAddr {
+        self.to_lower_half_checked()
+            .expect("unable to translate address to lower half")
     }
 }
 
@@ -271,7 +286,7 @@ impl ops::Shr<Inner> for VirtAddr {
 
 impl fmt::Display for VirtAddr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.0.fmt(f)
+        write!(f, "{:p}", self)
     }
 }
 

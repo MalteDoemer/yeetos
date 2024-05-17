@@ -52,7 +52,7 @@ impl KernelImageInfo {
 
 fn translate_range_to_higher_half(range: VirtualRange) -> VirtualRange {
     let page = Page::new(range.start_addr().to_higher_half());
-    VirtualRange::new(page, range.num_pages())
+    VirtualRange::with_size(page, range.num_pages())
 }
 
 fn translate_optional_range_to_higher_half(range: Option<VirtualRange>) -> Option<VirtualRange> {

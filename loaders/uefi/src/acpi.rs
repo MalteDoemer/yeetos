@@ -6,7 +6,6 @@ use log::info;
 use memory::phys::PhysAddr;
 use memory::virt::VirtAddr;
 use multi_core::handler::{IdentityMapMode, IdentityMappedAcpiHandler};
-use spin::Once;
 use uefi::table::cfg::{ACPI2_GUID, ACPI_GUID};
 use uefi::table::{Boot, SystemTable};
 use x86::controlregs::cr3;
@@ -61,6 +60,6 @@ extern "C" fn rust_entry_ap(ap_id: usize) -> ! {
 
     // this waits until the BSP is finished initializing
     let entry_point = KERNEL_ENTRY.wait();
-    
+
     make_jump_to_kernel(ap_id, *entry_point);
 }

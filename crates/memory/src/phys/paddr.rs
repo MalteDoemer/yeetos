@@ -272,7 +272,7 @@ impl ops::Shr<Inner> for PhysAddr {
 
 impl fmt::Display for PhysAddr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.0.fmt(f)
+        write!(f, "{:p}", self)
     }
 }
 

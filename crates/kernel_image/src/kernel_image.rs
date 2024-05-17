@@ -1,7 +1,7 @@
 use alloc::vec::Vec;
 use elf::{abi::PT_LOAD, endian::LittleEndian, segment::ProgramHeader, ElfBytes, ParseError};
 use memory::{
-    is_identity_mapped_higher_half_address, to_lower_half_virt,
+    is_identity_mapped_higher_half_address, virt_to_lower_half_checked,
     virt::{Page, VirtAddr, VirtualRange},
     PAGE_SHIFT, PAGE_SIZE,
 };
@@ -211,7 +211,7 @@ impl<'a> ParsedKernelImage<'a> {
 
     /// This calculates the lower half address of the start of the image when using fixed mode
     pub fn fixed_load_addr(&self) -> VirtAddr {
-        let image_base = to_lower_half_virt(self.phdrs.first_segment_addr())
+        let image_base = virt_to_lower_half_checked(self.phdrs.first_segment_addr())
             .expect("image base is not a higher half address");
         image_base - self.total_stack_size()
     }
@@ -279,7 +279,7 @@ impl<'a> ParsedKernelImage<'a> {
     }
 
     pub fn to_fixed_image(self) -> Result<KernelImage<'a>, KernelImageError> {
-        let image_base_mem = to_lower_half_virt(self.phdrs.first_segment_addr())
+        let image_base_mem = virt_to_lower_half_checked(self.phdrs.first_segment_addr())
             .expect("image base is not a higher half address");
 
         self.to_image(image_base_mem, false)
@@ -352,7 +352,7 @@ impl<'a> ParsedKernelImage<'a> {
         let start_page = Page::new(stack_start);
         let end_page = Page::new(stack_end.page_align_up_checked().unwrap());
 
-        VirtualRange::new_diff(start_page, end_page)
+        VirtualRange::new(start_page, end_page)
     }
 
     /// This function computes the range of virtual memory occupied by the heap.
@@ -365,7 +365,7 @@ impl<'a> ParsedKernelImage<'a> {
         let start_page = Page::new(heap_start);
         let end_page = Page::new(heap_end.page_align_up_checked().unwrap());
 
-        VirtualRange::new_diff(start_page, end_page)
+        VirtualRange::new(start_page, end_page)
     }
 
     /// This function computes the range of virtual memory the given PHDR is going to occupy.
@@ -389,7 +389,7 @@ impl<'a> ParsedKernelImage<'a> {
         let start_page = Page::new(segment_start);
         let end_page = Page::new(segment_end.page_align_up_checked().unwrap());
 
-        VirtualRange::new_diff(start_page, end_page)
+        VirtualRange::new(start_page, end_page)
     }
 
     /// See `get_segment_from_phdr()`

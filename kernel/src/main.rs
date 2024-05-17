@@ -15,8 +15,6 @@
 
 extern crate alloc;
 
-use alloc::boxed::Box;
-use core::arch::asm;
 use log::info;
 
 use crate::mm::GlobalFrameAllocator;

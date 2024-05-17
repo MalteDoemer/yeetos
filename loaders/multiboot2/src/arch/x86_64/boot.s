@@ -1,6 +1,5 @@
 
 // keep in sync with mmap.rs
-ZER0_FRAME = 0x0000
 PML4T_ADDR = 0x1000
 PDPT_ADDR = 0x2000
 PDT_START_ADDR = 0x3000

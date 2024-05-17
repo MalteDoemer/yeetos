@@ -16,8 +16,6 @@ pub enum MemoryMapEntryKind {
     RuntimeServiceCode,
     /// Code data the runtime environment (UEFI)
     RuntimeServiceData,
-    /// Memory is used for the initial page tables used by the loader and early kernel (can be reused)
-    LoaderPageTables,
     /// Memory is used by the kernel loader (can be reused)
     Loader,
     /// Memory is used for the boot info structure (can be reused)

@@ -245,13 +245,13 @@ fn verify_memory_regions(mem_regions: &[MemoryRegion]) {
 
 fn get_page_tables_entry() -> MemoryMapEntry {
     // defined in boot.s
-    let start_addr = 0;
+    let start_addr = 0x1000;
     let end_addr = 0x7000;
 
     MemoryMapEntry::new(
         PhysAddr::new(start_addr),
         PhysAddr::new(end_addr),
-        MemoryMapEntryKind::LoaderPageTables,
+        MemoryMapEntryKind::Loader,
     )
 }
 

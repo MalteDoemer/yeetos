@@ -5,7 +5,6 @@ use uefi::table::boot::{MemoryDescriptor, MemoryType};
 
 pub const MEMORY_TYPE_BOOT_INFO: u32 = 0x80000005;
 pub const MEMORY_TYPE_KERNEL_IMAGE: u32 = 0x80000006;
-pub const MEMORY_TYPE_KERNEL_PAGE_TABLES: u32 = 0x80000007;
 
 #[derive(Debug, Copy, Clone)]
 pub enum MemoryMapError {
@@ -58,9 +57,6 @@ fn verify_memory_map(mmap: &Vec<MemoryMapEntry>) -> Result<(), MemoryMapError> {
                 MemoryMapEntryKind::RuntimeServiceData => {
                     return Err(MemoryMapError::RuntimeServicesNotMappable)
                 }
-                MemoryMapEntryKind::LoaderPageTables => {
-                    return Err(MemoryMapError::KernelNotMappable)
-                }
                 MemoryMapEntryKind::Loader => {
                     return Err(MemoryMapError::KernelNotMappable);
                 }
@@ -101,7 +97,6 @@ fn merge(entry1: &MemoryMapEntry, entry2: &MemoryMapEntry) -> MemoryMapEntry {
 
 fn map_memory_type(uefi_type: MemoryType) -> MemoryMapEntryKind {
     match uefi_type {
-        MemoryType::RESERVED => MemoryMapEntryKind::Reserved,
         MemoryType::LOADER_CODE => MemoryMapEntryKind::Loader,
         MemoryType::LOADER_DATA => MemoryMapEntryKind::Loader,
         MemoryType::RUNTIME_SERVICES_CODE => MemoryMapEntryKind::RuntimeServiceCode,
@@ -111,18 +106,18 @@ fn map_memory_type(uefi_type: MemoryType) -> MemoryMapEntryKind {
         MemoryType::CONVENTIONAL => MemoryMapEntryKind::Usable,
 
         MemoryType::UNUSABLE => MemoryMapEntryKind::Defective,
-        MemoryType::ACPI_RECLAIM => MemoryMapEntryKind::Defective,
-        MemoryType::ACPI_NON_VOLATILE => MemoryMapEntryKind::Defective,
-        MemoryType::MMIO => MemoryMapEntryKind::Defective,
-        MemoryType::MMIO_PORT_SPACE => MemoryMapEntryKind::Defective,
-        MemoryType::PAL_CODE => MemoryMapEntryKind::Defective,
-        MemoryType::PERSISTENT_MEMORY => MemoryMapEntryKind::Defective,
+        MemoryType::RESERVED => MemoryMapEntryKind::Reserved,
+        MemoryType::ACPI_RECLAIM => MemoryMapEntryKind::Reserved,
+        MemoryType::ACPI_NON_VOLATILE => MemoryMapEntryKind::Reserved,
+        MemoryType::MMIO => MemoryMapEntryKind::Reserved,
+        MemoryType::MMIO_PORT_SPACE => MemoryMapEntryKind::Reserved,
+        MemoryType::PAL_CODE => MemoryMapEntryKind::Reserved,
+        MemoryType::PERSISTENT_MEMORY => MemoryMapEntryKind::Reserved,
 
         MemoryType(custom) => match custom {
             MEMORY_TYPE_BOOT_INFO => MemoryMapEntryKind::BootInfo,
-            MEMORY_TYPE_KERNEL_PAGE_TABLES => MemoryMapEntryKind::LoaderPageTables,
             MEMORY_TYPE_KERNEL_IMAGE => MemoryMapEntryKind::KernelImage,
-            _ => MemoryMapEntryKind::Defective,
+            _ => MemoryMapEntryKind::Reserved,
         },
     }
 }

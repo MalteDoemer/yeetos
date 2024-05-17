@@ -1,6 +1,5 @@
 use crate::mm::GlobalFrameAllocator;
 use alloc::vec::Vec;
-use core::arch::asm;
 use boot_info::BootInfoHeader;
 use kernel_image::KernelImageInfo;
 use memory::paging::{Entry, EntryUsage, Level1, Level2, Level3, Level4, Table, TableLevel};
@@ -157,8 +156,7 @@ fn get_memory_regions<'a>(
         MemoryMapEntryKind::Defective => false,
         MemoryMapEntryKind::RuntimeServiceCode => true,
         MemoryMapEntryKind::RuntimeServiceData => true,
-        MemoryMapEntryKind::LoaderPageTables => true,
-        MemoryMapEntryKind::Loader => true,
+        MemoryMapEntryKind::Loader => false,
         MemoryMapEntryKind::BootInfo => true,
         MemoryMapEntryKind::KernelImage => false, // handled separately
     });
@@ -251,7 +249,6 @@ fn translate_access(kind: MemoryMapEntryKind) -> AccessFlags {
     match kind {
         MemoryMapEntryKind::RuntimeServiceCode => AccessFlags::READ_EXEC,
         MemoryMapEntryKind::RuntimeServiceData => AccessFlags::READ_WRITE,
-        MemoryMapEntryKind::LoaderPageTables => AccessFlags::READ,
         MemoryMapEntryKind::Loader => AccessFlags::READ,
         MemoryMapEntryKind::BootInfo => AccessFlags::READ,
         _ => AccessFlags::empty(),

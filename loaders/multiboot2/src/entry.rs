@@ -1,4 +1,3 @@
-use core::mem::size_of;
 use memory::virt::VirtAddr;
 use spin::Once;
 

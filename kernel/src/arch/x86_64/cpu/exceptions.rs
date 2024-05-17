@@ -36,7 +36,7 @@ pub extern "x86-interrupt" fn device_not_available(_frame: InterruptStackFrame) 
     panic!("device not available");
 }
 
-pub extern "x86-interrupt" fn double_fault(_frame: InterruptStackFrame, error_code: u64) {
+pub extern "x86-interrupt" fn double_fault(_frame: InterruptStackFrame, _error_code: u64) {
     unsafe {
         asm!(
             "mov dx, 0x3F8",

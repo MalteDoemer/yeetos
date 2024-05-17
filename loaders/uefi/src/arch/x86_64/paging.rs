@@ -9,8 +9,6 @@ use uefi::table::boot::{AllocateType, BootServices, MemoryType};
 use x86::controlregs::cr3_write;
 use zeroize::Zeroize;
 
-use crate::mmap::MEMORY_TYPE_KERNEL_PAGE_TABLES;
-
 static PAGE_TABLES_MEMORY: Once<PhysicalRange> = Once::new();
 
 pub fn prepare(boot_services: &BootServices) {
@@ -23,7 +21,7 @@ pub fn prepare(boot_services: &BootServices) {
 
     let frames = boot_services.allocate_pages(
         AllocateType::AnyPages,
-        MemoryType::custom(MEMORY_TYPE_KERNEL_PAGE_TABLES),
+        MemoryType::LOADER_DATA,
         num_frames as usize,
     );
 

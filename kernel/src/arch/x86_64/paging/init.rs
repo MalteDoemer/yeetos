@@ -243,6 +243,9 @@ fn translate_virt_range(virtual_range: VirtualRange) -> Option<PhysicalRange> {
 fn init_p4_and_p3s() -> Result<(), InitPagingError> {
     let (p4, p4_addr) = unsafe { alloc_table::<Level4>()? };
 
+    // set the last entry of the PML4T to itself in order to enable recursive mapping
+    p4[KERNEL_P4_RECURSIVE_IDX] = Entry::table_entry(p4_addr);
+
     for i in 0..NUM_KERNEL_P3_TABLES {
         let idx = i + KERNEL_P4_START_IDX;
 

@@ -1,18 +1,10 @@
-use boot_info::BootInfoHeader;
-use spin::Once;
-
 mod frame_bump_allocator;
 mod frame_global_allocator;
+mod init;
+mod physical_memory_object;
+mod virtual_bump_allocator;
+mod virtual_global_allocator;
 
-use crate::arch;
 pub use frame_global_allocator::GlobalFrameAllocator;
-
-static INIT: Once<()> = Once::new();
-
-pub fn init(boot_info: &BootInfoHeader) {
-    INIT.call_once(|| {
-        frame_global_allocator::init(boot_info);
-    });
-
-    arch::paging::init(boot_info);
-}
+pub use init::{get_initial_kernel_regions, init, InitPagingError, InitialKernelRegion};
+pub use virtual_global_allocator::KernelVirtualAllocator;

@@ -10,16 +10,17 @@
 #![feature(allocator_api)]
 // needed for idt.rs
 #![feature(abi_x86_interrupt)]
-// used by the memory manager
-#![feature(type_alias_impl_trait)]
+// used for fallible allocations
+#![feature(vec_push_within_capacity)]
 
 extern crate alloc;
 
 use log::info;
 
-use crate::mm::GlobalFrameAllocator;
+use crate::mm::{GlobalFrameAllocator, KernelVirtualAllocator};
 use boot_info::BootInfoHeader;
 use memory::phys::PageFrameAllocator;
+use memory::virt::VirtualRangeAllocator;
 
 mod arch;
 mod heap;
@@ -41,6 +42,14 @@ pub extern "C" fn kernel_main(boot_info: &BootInfoHeader, proc_id: usize) -> ! {
 
     let frame = GlobalFrameAllocator.alloc();
     info!("[CPU {}]: got frame: {:?}", proc_id, frame);
+
+    let range = KernelVirtualAllocator.alloc(4, 1).unwrap();
+    info!(
+        "[CPU {}]: got range: {:?} - {:#x}",
+        proc_id,
+        range.start(),
+        range.num_pages()
+    );
 
     info!("[CPU {}]: done", proc_id);
     arch::cpu::halt();

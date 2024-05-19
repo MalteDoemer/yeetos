@@ -56,6 +56,10 @@ impl VirtualRange {
         self.end().to_addr()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.start == self.end
+    }
+
     pub const fn pages(&self) -> Range<Page> {
         self.start()..self.end()
     }

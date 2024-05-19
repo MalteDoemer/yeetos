@@ -1,4 +1,4 @@
-use memory::phys::{Frame, Inner, PageFrameAllocator, PhysicalRange};
+use memory::phys::{Frame, Inner, PhysicalRange};
 
 pub struct FrameBumpAllocator {
     range: PhysicalRange,
@@ -13,10 +13,12 @@ impl FrameBumpAllocator {
     pub fn range(&self) -> PhysicalRange {
         self.range
     }
-}
 
-impl PageFrameAllocator for FrameBumpAllocator {
-    fn alloc(&mut self) -> Option<Frame> {
+    pub fn contains(&self, frame: Frame) -> bool {
+        self.range.contains_frame(frame)
+    }
+
+    pub fn alloc(&mut self) -> Option<Frame> {
         if self.index < self.range.num_frames() {
             let frame = self.range.start().add(self.index);
             self.index += 1;
@@ -26,12 +28,7 @@ impl PageFrameAllocator for FrameBumpAllocator {
         }
     }
 
-    fn dealloc(&mut self, _frame: Frame) -> Option<()> {
+    pub fn dealloc(&mut self, _frame: Frame) {
         // we simply don't deallocate
-        Some(())
-    }
-
-    fn contains(&self, frame: Frame) -> bool {
-        self.range.contains_frame(frame)
     }
 }

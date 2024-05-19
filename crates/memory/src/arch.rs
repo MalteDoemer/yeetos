@@ -3,6 +3,9 @@ mod x86_64 {
     /// Base address of the kernel address space
     pub const KERNEL_BASE: usize = 0xfffff00000000000;
 
+    /// The end (exclusive) address of the kernel address space.
+    pub const KERNEL_END: usize = 0xffffff8000000000;
+
     /// The number of bytes that are identity mapped (with higher half addresses) when the kernel
     /// gains control.
     ///
@@ -32,7 +35,10 @@ mod x86_64 {
 #[cfg(target_arch = "x86")]
 mod x86 {
     /// Base address of the kernel address space
-    pub const KERNEL_BASE: usize = 0xC0000000;
+    pub const KERNEL_BASE: usize = 0xc0000000;
+
+    /// The end (exclusive) address of the kernel address space.
+    pub const KERNEL_END: usize = 0xffc00000;
 
     /// The number of bytes that are identity mapped (with higher half addresses) when the kernel
     /// gains control.

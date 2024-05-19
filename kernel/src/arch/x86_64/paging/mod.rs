@@ -25,3 +25,22 @@ static mut INITIAL_P4_ADDR: PhysAddr = PhysAddr::zero();
 static mut KERNEL_P3_ADDRS: [PhysAddr; NUM_KERNEL_P3_TABLES] =
     [PhysAddr::zero(); NUM_KERNEL_P3_TABLES];
 
+/// This is the address of the PML4T when using recursive mapping.
+const P4_ADDR: usize = 0xffff_ffff_ffff_f000;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -5,12 +5,12 @@ pub trait VirtualRangeAllocator {
     /// that is managed by this allocator.
     fn range(&self) -> VirtualRange;
 
-    /// Allocate a range of virtual memory with a size of at least `size`
+    /// Allocate a range of virtual memory with a size of at least `num_pages * PAGE_SIZE`
     /// and alignment at least `align`.
     /// # Parameters
-    /// - `size` must be a multiple of `PAGE_SIZE`
-    /// - `alignment` must be a power of two and >= `PAGE_SIZE`
-    fn alloc(&mut self, size: usize, alignment: usize) -> Option<VirtualRange>;
+    /// - `num_pages` the number of virtual pages the allocated region should have
+    /// - `alignment` the requested alignment in pages, must be a power of two
+    fn alloc(&mut self, num_pages: usize, alignment: usize) -> Option<VirtualRange>;
 
     /// Try to mark a specific range of virtual memory as allocated. This function
     /// can be used to "allocate" memory regions that need a specific address such as

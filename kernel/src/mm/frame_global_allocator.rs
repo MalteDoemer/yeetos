@@ -1,4 +1,5 @@
 use crate::mm::frame_bump_allocator::FrameBumpAllocator;
+use alloc::boxed::Box;
 use alloc::vec::Vec;
 use boot_info::BootInfoHeader;
 use memory::phys::{Frame, PageFrameAllocator};
@@ -31,7 +32,7 @@ impl AllocatorImpl {
 
             *guard = vec;
         } else {
-            panic!("GLOBAL_ALLOC.init() called more than once!");
+            panic!("GLOBAL_ALLOC.init() called more than once");
         }
     }
 
@@ -54,7 +55,32 @@ impl AllocatorImpl {
         return None;
     }
 
-    pub fn dealloc(&self, frame: Frame) -> Option<()> {
+    pub fn alloc_multiple(&self, num_frames: usize) -> Option<Box<[Frame]>> {
+        let mut vec = Vec::new();
+        vec.try_reserve(num_frames).ok()?;
+
+        for _ in 0..num_frames {
+            let frame = self.alloc();
+
+            match frame {
+                Some(frame) => vec.push(frame),
+                None => {
+                    // we now need to deallocate all previously
+                    // allocated frames and then return an error
+                    for frame in &vec {
+                        self.dealloc(*frame);
+                    }
+
+                    return None;
+                }
+            }
+        }
+
+        let boxed = vec.into_boxed_slice();
+        Some(boxed)
+    }
+
+    pub fn dealloc(&self, frame: Frame) {
         let mut guard = self.allocators.lock();
 
         debug_assert!(
@@ -64,11 +90,10 @@ impl AllocatorImpl {
 
         for alloc in guard.iter_mut() {
             if alloc.contains(frame) {
-                return alloc.dealloc(frame);
+                alloc.dealloc(frame);
+                return;
             }
         }
-
-        return None;
     }
 
     pub fn contains(&self, frame: Frame) -> bool {
@@ -92,8 +117,12 @@ impl PageFrameAllocator for GlobalFrameAllocator {
         GLOBAL_ALLOC.alloc()
     }
 
-    fn dealloc(&mut self, frame: Frame) -> Option<()> {
-        GLOBAL_ALLOC.dealloc(frame)
+    fn alloc_multiple(&mut self, num_frames: usize) -> Option<Box<[Frame]>> {
+        GLOBAL_ALLOC.alloc_multiple(num_frames)
+    }
+
+    fn dealloc(&mut self, frame: Frame) {
+        GLOBAL_ALLOC.dealloc(frame);
     }
 
     fn contains(&self, frame: Frame) -> bool {

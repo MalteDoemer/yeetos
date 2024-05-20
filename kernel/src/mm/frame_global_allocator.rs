@@ -80,6 +80,17 @@ impl AllocatorImpl {
         Some(boxed)
     }
 
+    pub fn alloc_specific(&self, frame: Frame) -> Option<()> {
+        let mut guard = self.allocators.lock();
+        for alloc in guard.iter_mut() {
+            if alloc.contains(frame) {
+                return alloc.alloc_specific(frame);
+            }
+        }
+
+        None
+    }
+
     pub fn dealloc(&self, frame: Frame) {
         let mut guard = self.allocators.lock();
 
@@ -119,6 +130,10 @@ impl PageFrameAllocator for GlobalFrameAllocator {
 
     fn alloc_multiple(&mut self, num_frames: usize) -> Option<Box<[Frame]>> {
         GLOBAL_ALLOC.alloc_multiple(num_frames)
+    }
+
+    fn alloc_specific(&mut self, frame: Frame) -> Option<()> {
+        GLOBAL_ALLOC.alloc_specific(frame)
     }
 
     fn dealloc(&mut self, frame: Frame) {

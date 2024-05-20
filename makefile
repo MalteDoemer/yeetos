@@ -6,13 +6,13 @@ OUT_DIR=$(TOP_DIR)out
 # ARCH=i686
 ARCH=x86_64
 CONFIG=debug
-LOADER=uefi
+LOADER=multiboot2
 
 IMAGE_SIZE=64M
 
 # qemu options
 MEMORY=4G
-CORES=8
+CORES=1
 
 # end configuration
 

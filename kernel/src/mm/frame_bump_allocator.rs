@@ -28,6 +28,17 @@ impl FrameBumpAllocator {
         }
     }
 
+    pub fn alloc_specific(&mut self, frame: Frame) -> Option<()> {
+        let idx = frame.checked_diff(self.range.start())?;
+
+        if self.index <= idx {
+            self.index = idx + 1;
+            Some(())
+        } else {
+            None
+        }
+    }
+
     pub fn dealloc(&mut self, _frame: Frame) {
         // we simply don't deallocate
     }

@@ -1,6 +1,6 @@
 use crate::RgbColor;
 use alloc::vec::Vec;
-use memory::phys::PhysAddr;
+use memory::phys::{Frame, PhysAddr, PhysicalRange};
 
 #[derive(Debug, Clone)]
 pub struct FrameBufferInfo {
@@ -70,6 +70,17 @@ impl FrameBufferInfo {
     /// The physical address of the frame buffer memory.
     pub fn base_address(&self) -> PhysAddr {
         self.base_address
+    }
+
+    /// Calculates the enclosing physical range of the frame buffer.
+    ///
+    /// # Panics
+    /// If the calculation overflows.
+    pub fn physical_range(&self) -> PhysicalRange {
+        let base_addr = self.base_address.frame_align_down();
+        let size_in_bytes = (self.pitch * self.height) as memory::phys::Inner;
+        let end_addr = (self.base_address + size_in_bytes).frame_align_up();
+        PhysicalRange::new(Frame::new(base_addr), Frame::new(end_addr))
     }
 
     /// The pitch indicates how many __bytes__ per line there are.

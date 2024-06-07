@@ -146,7 +146,14 @@ impl Entry {
     }
 }
 
-pub trait TableLevel {}
+pub enum Level {
+    Level1,
+    Level2,
+}
+
+pub trait TableLevel {
+    const LEVEL: Level;
+}
 
 /// Level1 represents the page table (PT).
 pub enum Level1 {}
@@ -154,12 +161,16 @@ pub enum Level1 {}
 /// Level2 represents the page directory (PD).
 pub enum Level2 {}
 
-impl TableLevel for Level1 {}
+impl TableLevel for Level1 {
+    const LEVEL: Level = Level::Level1;
+}
 
-impl TableLevel for Level2 {}
+impl TableLevel for Level2 {
+    const LEVEL: Level = Level::Level2;
+}
 
 /// A `Table` represents either a PT or a PD
-/// The type argument `L` defines which paging structure it referes to.
+/// The type argument `L` defines which paging structure it refers to.
 /// All `Table` structs have a size of 4KiB.
 #[repr(transparent)]
 #[derive(Zeroize)]

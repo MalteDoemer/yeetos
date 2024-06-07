@@ -1,13 +1,18 @@
 use memory::phys::PhysAddr;
 use memory::{KERNEL_BASE, PAGE_TABLE_ENTRIES};
+use spin::Mutex;
 
 mod init;
 
 pub use init::init;
+use memory::paging::{Level4, Table};
 
 const KERNEL_P4_START_IDX: usize = (KERNEL_BASE >> 39) & 0x1FF;
 const KERNEL_P4_END_IDX: usize = PAGE_TABLE_ENTRIES - 1;
 const NUM_KERNEL_P3_TABLES: usize = KERNEL_P4_END_IDX - KERNEL_P4_START_IDX;
+
+/// This is the address of the PML4T when using recursive mapping.
+const P4: *mut Table<Level4> = 0xffff_ffff_ffff_f000 as *mut Table<Level4>;
 
 /// This global variable holds the physical address of the PML4T that is used during initialization
 /// until the PML4T's are managed by the process manager / scheduler.
@@ -25,22 +30,5 @@ static mut INITIAL_P4_ADDR: PhysAddr = PhysAddr::zero();
 static mut KERNEL_P3_ADDRS: [PhysAddr; NUM_KERNEL_P3_TABLES] =
     [PhysAddr::zero(); NUM_KERNEL_P3_TABLES];
 
-/// This is the address of the PML4T when using recursive mapping.
-const P4_ADDR: usize = 0xffff_ffff_ffff_f000;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+/// This is the global page lock. It must be held whenever the recursive mapping area is accessed.
+static PAGE_LOCK: Mutex<()> = Mutex::new(());

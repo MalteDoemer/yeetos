@@ -153,7 +153,16 @@ impl Entry {
     }
 }
 
-pub trait TableLevel {}
+pub enum Level {
+    Level1,
+    Level2,
+    Level3,
+    Level4,
+}
+
+pub trait TableLevel {
+    const LEVEL: Level;
+}
 
 pub trait HierarchicalLevel: TableLevel {
     type NextLevel: TableLevel;
@@ -175,13 +184,21 @@ pub enum Level3 {}
 /// Level4 represents the page map level 4 table (PML4T).
 pub enum Level4 {}
 
-impl TableLevel for Level1 {}
+impl TableLevel for Level1 {
+    const LEVEL: Level = Level::Level1;
+}
 
-impl TableLevel for Level2 {}
+impl TableLevel for Level2 {
+    const LEVEL: Level = Level::Level2;
+}
 
-impl TableLevel for Level3 {}
+impl TableLevel for Level3 {
+    const LEVEL: Level = Level::Level3;
+}
 
-impl TableLevel for Level4 {}
+impl TableLevel for Level4 {
+    const LEVEL: Level = Level::Level4;
+}
 
 impl PagingLevel for Level1 {
     const PAGE_FRAME_SIZE: u64 = FRAME_SIZE; // 4KiB
